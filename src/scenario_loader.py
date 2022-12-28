@@ -3,8 +3,7 @@ import xml.etree.cElementTree as et
 from enum import Enum
 import typing as tp
 from abc import ABC, abstractmethod
-import uuid
-
+from xml.etree import ElementTree
 
 texts = {
     "TEXT1": "test text 1",
@@ -23,7 +22,6 @@ class NodeType(Enum):
     inMessage = "inMessage"
     outMessage = "outMessage"
     editMessage = "editMessage"
-    btnArray = "btnArray"
     ...
 
 
@@ -53,8 +51,8 @@ class Button:
 
 
 class DialogueNode:
-    def __init__(self, node_type: NodeType, value: str | None, buttons: None | tp.List[Button] = None) -> None:
-        self.id = uuid.uuid4()
+    def __init__(self, element_id: str, node_type: NodeType, value: str | None, buttons: None | tp.List[Button] = None) -> None:
+        self.id = element_id
         self.node_type = node_type
         self._value = value
         self.next_node_id: None | str = None
@@ -94,21 +92,106 @@ class XMLParser(Parser):
         except IndexError:
             return "not found template"
 
-    # @staticmethod
-    # def _get_child_over_arrow
-
-    def parse(self, src_path: str) -> tp.List[DialogueNode]:
-        tree = et.parse(src_path)
-        dialogue_root = tree.findall(".//mxCell[@id='0OOwWBntzJv1pY5lexbC-0']")[0]
-
-        xml_value = dialogue_root.get("value")
+    def _convert_to_dialogue_node(self, xml_value: str, xml_id: str) -> DialogueNode:
         node_type = NodeType(self._get_node_type(xml_value))
+
+        text_template = None
         if node_type == NodeType.outMessage:
             text_template = self._get_text_template(xml_value)
+        elif node_type == NodeType.inMessage:
+            ...
+        elif node_type == NodeType.editMessage:
+            ...
         else:
-            text_template = None
-        root = DialogueNode(node_type=node_type, value=text_template)
+            raise
+        node = DialogueNode(element_id=xml_id, node_type=node_type, value=text_template)
+        return node
 
-        arrow = tree.findall(f".//mxCell[@source='0OOwWBntzJv1pY5lexbC-0']")[0]
+    def _get_child_over_arrow(self, tree: ElementTree, source_id: str) -> tp.List[DialogueNode]:
+        arrows = tree.findall(f".//mxCell[@source='{source_id}']")  # все стрелки
+        childs = []
+        for arrow in arrows:
+            next_step = tree.findall(f".//mxCell[@id='{arrow.get('target')}']")[0]
+            xml_value = next_step.get("value")
+            xml_id = next_step.get("id")
+            node = self._convert_to_dialogue_node(xml_value, xml_id)
+            childs.append(node)
+        return childs
+
+    def parse(self, src_path: str) -> tp.List[DialogueNode]:
+        result = []
+        tree = et.parse(src_path)
+        root_id = "0OOwWBntzJv1pY5lexbC-0"
+        dialogue_root = tree.findall(f".//mxCell[@id='{root_id}']")[0]
+
+        xml_value = dialogue_root.get("value")
+        root = self._convert_to_dialogue_node(xml_value, root_id)
+        result.append(root)
+        childs = self._get_child_over_arrow(tree, root_id)
+        new_childs = [c for c in childs if c not in result]
+        result += new_childs
+
+
+def main() -> None:
+    print("ha")
+
+    result = []
+    tree = et.parse(xml_src_path)
+    root_id = "0OOwWBntzJv1pY5lexbC-0"
+    dialogue_root = tree.findall(f".//mxCell[@id='{root_id}']")[0]
+    xml_value = dialogue_root.get("value")
+    xml_id = dialogue_root.get("id")
+
+    result.append((xml_value, xml_id))
+
+    arrows = tree.findall(f".//mxCell[@source='{root_id}']")  # все стрелки
+    childs = []
+    for arrow in arrows:
         next_step = tree.findall(f".//mxCell[@id='{arrow.get('target')}']")[0]
-        print(next_step.get("value"))
+        xml_value = next_step.get("value")
+        xml_id = next_step.get("id")
+        childs.append((xml_value, xml_id))
+
+    new_childs = [c for c in childs if c not in result]
+    result += new_childs
+
+    for child in new_childs:
+        arrows = tree.findall(f".//mxCell[@source='{child[1]}']")  # все стрелки
+        childs = []
+        for arrow in arrows:
+            next_step = tree.findall(f".//mxCell[@id='{arrow.get('target')}']")[0]
+            xml_value = next_step.get("value")
+            xml_id = next_step.get("id")
+            childs.append((xml_value, xml_id))
+
+    new_childs = [c for c in childs if c not in result]
+    result += new_childs
+
+    for child in new_childs:
+        arrows = tree.findall(f".//mxCell[@source='{child[1]}']")  # все стрелки
+        childs = []
+        for arrow in arrows:
+            next_step = tree.findall(f".//mxCell[@id='{arrow.get('target')}']")[0]
+            xml_value = next_step.get("value")
+            xml_id = next_step.get("id")
+            if xml_value == "btnArray":
+                buttons = []
+                xml_buttons = tree.findall(f".//mxCell[@parent='{xml_id}']")
+                for xml_b in xml_buttons:
+                    xml_button_value = xml_b.get("value")
+                    xml_button_id = xml_b.get("id")
+                    buttons.append((xml_button_value, xml_button_id))
+                childs.append((xml_value, xml_id, buttons))
+            else:
+                childs.append((xml_value, xml_id))
+
+    new_childs = [c for c in childs if c not in result]
+    result += new_childs
+
+    #######
+    for r in result:
+        print(r)
+
+
+if __name__ == "__main__":
+    main()
