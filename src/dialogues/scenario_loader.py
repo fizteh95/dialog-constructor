@@ -1,12 +1,10 @@
 from __future__ import annotations
-import xml.etree.cElementTree as et
+
 import typing as tp
+import xml.etree.cElementTree as et
 from abc import ABC, abstractmethod
 
-from src.dialogues.domain import Button
-from src.dialogues.domain import Dialogue
-from src.dialogues.domain import DialogueNode
-from src.dialogues.domain import NodeType
+from src.dialogues.domain import Button, Dialogue, DialogueNode, NodeType
 
 
 class Parser(ABC):
@@ -57,7 +55,9 @@ class XMLParser(Parser):
             if xml_value is not None and xml_value != "btnArray":
                 node_type = NodeType(self._get_node_type(xml_value))
                 value = self._get_text_template(xml_value)
-                dialogue_node = DialogueNode(element_id=n.get("id"), node_type=node_type, value=value)
+                dialogue_node = DialogueNode(
+                    element_id=n.get("id"), node_type=node_type, value=value
+                )
                 dialogue_node.add_next(arrows.get(dialogue_node.id))
                 result[dialogue_node.id] = dialogue_node
         for n in nodes:
@@ -75,7 +75,11 @@ class XMLParser(Parser):
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
                 result[source_id].next_node_id = None
-        root_id = list(result.keys())[0].split("-")[0] + "-" + str(min([int(x.split("-")[-1]) for x in result.keys()]))
+        root_id = (
+            list(result.keys())[0].split("-")[0]
+            + "-"
+            + str(min([int(x.split("-")[-1]) for x in result.keys()]))
+        )
         return root_id, list(result.values())
 
 

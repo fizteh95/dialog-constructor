@@ -1,5 +1,5 @@
-from src.dialogues.scenario_loader import XMLParser
 from src.dialogues.domain import Dialogue
+from src.dialogues.scenario_loader import XMLParser
 
 
 def main():
@@ -11,5 +11,5 @@ def main():
     print(dialogue)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

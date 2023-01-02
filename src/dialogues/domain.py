@@ -1,6 +1,5 @@
-from enum import Enum
 import typing as tp
-
+from enum import Enum
 
 texts = {
     "TEXT1": "test text 1",
@@ -33,7 +32,13 @@ class Button:
 
 
 class DialogueNode:
-    def __init__(self, element_id: str, node_type: NodeType, value: str | None, buttons: None | tp.List[Button] = None) -> None:
+    def __init__(
+        self,
+        element_id: str,
+        node_type: NodeType,
+        value: str | None,
+        buttons: None | tp.List[Button] = None,
+    ) -> None:
         self.id = element_id
         self.node_type = node_type
         self._value = value
