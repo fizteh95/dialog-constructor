@@ -1,5 +1,6 @@
 import typing as tp
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from dataclasses import dataclass
 
 import aiogram
@@ -39,9 +40,16 @@ class InEvent(Event):
 
 
 @dataclass
+class Button:
+    text: str
+    callback_data: tp.Optional[tp.Dict[str, str]]
+
+
+@dataclass
 class OutEvent(Event):
     user: User
     text: str
+    buttons: tp.Optional[tp.List[Button]]
     ...
 
 
@@ -79,17 +87,16 @@ class Poller(ABC):
         """Poll from outer service"""
 
 
-class Sender(ABC, Subscriber):
-    @abstractmethod
-    def __init__(self) -> None:
+class Sender(ABC, Subscriber):  # type: ignore
+    def __init__(self, *args: tp.Any, **kwargs: tp.Any) -> None:
         """Initialize of sender"""
 
     @abstractmethod
-    def send(self) -> None:
+    async def send(self, event: OutEvent) -> None:
         """Send to outer service"""
 
 
-class Executor(ABC, Subscriber):
+class Executor(ABC, Subscriber):  # type: ignore
     @abstractmethod
     def __init__(self) -> None:
         """Initialize of executor"""
@@ -123,11 +130,67 @@ class ConcreteMessageBus(MessageBus):
 
 
 class TgPoller(Poller):
-    def __init__(self, bus: MessageBus, bot_token: str) -> None:
+    def __init__(self, bus: MessageBus, bot: aiogram.Bot) -> None:
         """Initialize of poller"""
         super().__init__(bus)
-        self.bot = aiogram.Bot(token=bot_token)
+        self.bot = bot
         self.dp = aiogram.Dispatcher(self.bot)
+        self.dp.register_message_handler(self.process_message)
+
+    async def process_message(self, tg_message: aiogram.types.Message) -> None:
+        """Process message from telegram"""
+        try:
+            text = tg_message.text
+        except Exception as e:
+            raise
+
+        user = User(
+            outer_id=tg_message.from_user.id,
+            nickname=tg_message.from_user.username,
+            name=tg_message.from_user.first_name,
+            surname=tg_message.from_user.last_name,
+        )
+        message = InEvent(user=user, text=text)
+        self.bus.public_message(message=message)
 
     async def poll(self) -> None:
-        """Poll from outer service"""
+        """Poll from outer service. Must be run in background task"""
+        try:
+            try:
+                await self.dp.start_polling()
+            except Exception as e:
+                raise e
+        finally:
+            await self.bot.close()
+
+
+class TgSender(Sender):
+    def __init__(self, bot: aiogram.Bot) -> None:
+        """Initialize of sender"""
+        super().__init__()
+        self.bot = bot
+
+    async def handle_message(self, message: Event) -> None:
+        """Handle message from bus"""
+        if isinstance(message, OutEvent):
+            await self.send(message)
+
+    async def send(self, event: OutEvent) -> None:
+        """Send to outer service"""
+        keyboard = None
+        if event.buttons is not None:
+            keyboard = aiogram.types.InlineKeyboardMarkup()
+            for button in event.buttons:
+                keyboard.row(aiogram.types.InlineKeyboardButton(text=button.text))
+        await self.bot.send_message(chat_id=event.user.outer_id, text=event.text, reply_markup=keyboard)
+
+
+class ConcreteExecutor(Executor):
+    def __init__(self) -> None:
+        """Initialize of executor"""
+
+    def handle_message(self, message: Event) -> None:
+        """Handle message from bus"""
+
+    def execute_dialogue(self) -> None:
+        """Execute dialogue method"""

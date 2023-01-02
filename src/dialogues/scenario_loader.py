@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import typing as tp
 import xml.etree.cElementTree as et
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 
-from src.dialogues.domain import Button, Dialogue, DialogueNode, NodeType
+from src.dialogues.domain import Button
+from src.dialogues.domain import Dialogue
+from src.dialogues.domain import DialogueNode
+from src.dialogues.domain import NodeType
 
 
 class Parser(ABC):
