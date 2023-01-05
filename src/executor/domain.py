@@ -30,7 +30,7 @@ class User:
         self.patronim = patronim
         self.event_history: tp.List[Event] = []
         self.current_scenario_id: None | str = None
-        self.current_node_id: None | int = None
+        self.current_node_id: None | str = None
 
     def get_user_var(self, var: str) -> tp.Any:
         raise
@@ -87,10 +87,14 @@ class InMemoryRepo(AbstractRepo):
         return user_from_repo
 
     async def set_user_current_scenario(self, user: User, scenario_name: str) -> None:
-        ...
+        user_copy = copy.deepcopy(await self.get_user(user.outer_id))
+        user_copy.current_scenario_id = scenario_name
+        self.users[user.outer_id] = user_copy
 
     async def set_user_current_node(self, user: User, node_id: str) -> None:
-        ...
+        user_copy = copy.deepcopy(await self.get_user(user.outer_id))
+        user_copy.current_node_id = node_id
+        self.users[user.outer_id] = user_copy
 
     async def create_dialogue_scenario(self, dialogue: Dialogue) -> Dialogue:
         self.dialogues[dialogue.name] = dialogue
@@ -298,36 +302,59 @@ class ConcreteExecutor(Executor):
         ...
 
     async def execute_dialogue(self, event: InEvent) -> None:
-        """Execute dialogue method"""
+        """
+        Execute dialogue method
+        Берем текущий сценарий и текущую ноду клиента
+        Если текущего сценария нет то берем сценарий по умолчанию
+        """
         user = await self.repo.get_user(event.user.outer_id)
-        result_out_event: tp.List[OutEvent] = []
         # вытаскиваем текущий сценарий для пользователя
         if user.current_scenario_id is None:
             init_scenario_name = "Test scenario"
             await self.repo.set_user_current_scenario(user, init_scenario_name)
+
             current_scenario = await self.repo.get_dialogue(init_scenario_name)
+            result_out_event = await self.scenario_from_start(current_scenario, user)
         else:
             current_scenario = await self.repo.get_dialogue(user.current_scenario_id)
-        # вытаскиваем текущую ноду диалога
-        user_current_node = user.current_node_id
-        # если текущий ноды нет, значит клиент сценарий еще не начинал
-        if user_current_node is None:
-            root_node = current_scenario.get_init_root()
-            # проверяем что этот сценарий начинается с входящего сообщения
-            if root_node.node_type == NodeType.inMessage:
-                # берем следующую ноду
-                next_node = current_scenario.get_next_node(root_node)
-                # если она есть и ее тип - исходящее сообщение
-                if next_node is not None and next_node.node_type == NodeType.outMessage:
-                    prev_node = copy.deepcopy(next_node)
-                    new_event = self.translate_node_to_event(next_node)
-                    result_out_event.append(new_event)
+            # вытаскиваем текущую ноду диалога
+            user_current_node = user.current_node_id
+            # если текущий ноды нет, значит клиент сценарий еще не начинал
+            if user_current_node is None:
+                result_out_event = await self.scenario_from_start(current_scenario, user)
+            else:  # если текущий сценарий уже был запущен и мы где-то посередине
+                result_out_event: tp.List[OutEvent] = []
+                current_node = current_scenario.get_node_by_id(user_current_node)
+                next_node = current_scenario.get_next_node(current_node)
+                prev_node = copy.deepcopy(next_node)  # должно быть не None
+                new_event = self.translate_node_to_event(next_node)
+                result_out_event.append(new_event)
+                if next_node.node_type != NodeType.inMessage:
+                    ...
+                await self.repo.set_user_current_node(user, prev_node.id)  # type: ignore
+        ...
+        await self.bus.public_message(result_out_event)
 
-                    while next_node:
-                        prev_node = copy.deepcopy(next_node)
-                        next_node = current_scenario.get_next_node(next_node)
-                        # если она есть и ее тип - исходящее сообщение
-                        if next_node is not None and next_node.node_type == NodeType.outMessage:
-                            new_event = self.translate_node_to_event(next_node)
-                            result_out_event.append(new_event)
-                    await self.repo.set_user_current_node(user, prev_node.id)
+    async def scenario_from_start(self, current_scenario: Dialogue, user: User) -> tp.List[OutEvent]:
+        result_out_event: tp.List[OutEvent] = []
+        root_node = current_scenario.get_init_root()
+        # проверяем что этот сценарий начинается с входящего сообщения
+        if root_node.node_type == NodeType.inMessage:  # over-engeneering, должно быть так
+            # берем следующую ноду
+            next_node = current_scenario.get_next_node(root_node)
+            prev_node = copy.deepcopy(next_node)
+            # если она есть и ее тип - исходящее сообщение
+            if next_node is not None and next_node.node_type == NodeType.outMessage:  # тоже должно быть так
+                prev_node = copy.deepcopy(next_node)
+                new_event = self.translate_node_to_event(next_node)
+                result_out_event.append(new_event)
+
+                while next_node:
+                    prev_node = copy.deepcopy(next_node)
+                    next_node = current_scenario.get_next_node(next_node)
+                    # если она есть и ее тип - исходящее сообщение
+                    if next_node is not None and next_node.node_type == NodeType.outMessage:
+                        new_event = self.translate_node_to_event(next_node)
+                        result_out_event.append(new_event)
+            await self.repo.set_user_current_node(user, prev_node.id)  # type: ignore
+        return result_out_event

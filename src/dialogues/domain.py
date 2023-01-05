@@ -72,7 +72,10 @@ class Dialogue:
             return None
         return self._nodes[next_node_id]
 
-    def __repr__(self):
+    def get_node_by_id(self, node_id: str) -> DialogueNode:
+        return self._nodes[node_id]
+
+    def __repr__(self) -> str:
         text = ""
         for k, v in self._nodes.items():
             if v.buttons is not None:
