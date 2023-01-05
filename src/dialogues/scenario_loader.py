@@ -91,7 +91,7 @@ def main() -> None:
     xml_src_path = "/src/resources/dialogue-schema-test.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
-    dialogue = Dialogue(root_id=root_id, nodes=nodes)
+    dialogue = Dialogue(root_id=root_id, name="Test scenario", nodes=nodes)
     print(root_id)
     print(dialogue)
 

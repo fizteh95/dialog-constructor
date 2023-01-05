@@ -50,11 +50,14 @@ class DialogueNode:
 
     @property
     def value(self) -> str:
+        if self._value is None:
+            return "text not found"
         return texts.get(self._value, "text not found")
 
 
 class Dialogue:
-    def __init__(self, root_id: str, nodes: tp.List[DialogueNode]) -> None:
+    def __init__(self, root_id: str, name: str, nodes: tp.List[DialogueNode]) -> None:
+        self.name = name
         self.root_id = root_id
         self._nodes = {}
         for node in nodes:
@@ -63,8 +66,10 @@ class Dialogue:
     def get_init_root(self) -> DialogueNode:
         return self._nodes[self.root_id]
 
-    def get_next_node(self, current_node: DialogueNode) -> DialogueNode:
+    def get_next_node(self, current_node: DialogueNode) -> tp.Optional[DialogueNode]:
         next_node_id = current_node.next_node_id
+        if next_node_id is None:
+            return None
         return self._nodes[next_node_id]
 
     def __repr__(self):
