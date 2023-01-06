@@ -73,7 +73,10 @@ class Dialogue:
         return self._nodes[next_node_id]
 
     def get_node_by_id(self, node_id: str) -> DialogueNode:
-        return self._nodes[node_id]
+        try:
+            return self._nodes[node_id]
+        except KeyError:
+            raise
 
     def __repr__(self) -> str:
         text = ""
