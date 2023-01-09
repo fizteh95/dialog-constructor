@@ -1,8 +1,14 @@
+import asyncio
+
+from aiogram import Bot
+
 from src.dialogues.domain import Dialogue
 from src.dialogues.scenario_loader import XMLParser
-from src.executor.domain import ConcreteExecutor, ConcreteMessageBus, InMemoryRepo, TgPoller, TgSender
-from aiogram import Bot
-import asyncio
+from src.executor.domain import ConcreteExecutor
+from src.executor.domain import ConcreteMessageBus
+from src.executor.domain import InMemoryRepo
+from src.executor.domain import TgPoller
+from src.executor.domain import TgSender
 
 
 async def main() -> None:

@@ -18,6 +18,10 @@ class NodeType(Enum):
     inMessage = "inMessage"
     outMessage = "outMessage"
     editMessage = "editMessage"
+    dataExtract = "dataExtract"
+    logicalUnit = "logicalUnit"
+    remoteRequest = "remoteRequest"
+    setVariable = "setVariable"
     ...
 
 
@@ -88,4 +92,4 @@ class Dialogue:
                 text += f"{k}, {v.node_type}, {v.value}, {v.next_node_id} {buttons}\n"
             else:
                 text += f"{k}, {v.node_type}, {v.value}, {v.next_node_id}\n"
-        return text
+        return text[:-1]

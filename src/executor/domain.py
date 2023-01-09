@@ -1,13 +1,14 @@
+import asyncio
 import copy
 import typing as tp
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
-import asyncio
 
 import aiogram
 
-from src.dialogues.domain import Dialogue, DialogueNode
+from src.dialogues.domain import Dialogue
+from src.dialogues.domain import DialogueNode
 from src.dialogues.domain import NodeType
 
 
@@ -52,7 +53,9 @@ class AbstractRepo(ABC):
         ...
 
     @abstractmethod
-    async def set_user_current_scenario(self, user: User, scenario_name: str | None) -> None:
+    async def set_user_current_scenario(
+        self, user: User, scenario_name: str | None
+    ) -> None:
         ...
 
     @abstractmethod
@@ -87,7 +90,9 @@ class InMemoryRepo(AbstractRepo):
             user_from_repo = await self.create_user(user)
         return user_from_repo
 
-    async def set_user_current_scenario(self, user: User, scenario_name: str | None) -> None:
+    async def set_user_current_scenario(
+        self, user: User, scenario_name: str | None
+    ) -> None:
         user_copy = copy.deepcopy(await self.get_user(user.outer_id))
         user_copy.current_scenario_id = scenario_name
         self.users[user.outer_id] = user_copy
@@ -207,11 +212,6 @@ class ConcreteMessageBus(MessageBus):
                 await sub.handle_message(current_message)
 
 
-# class PassFilter:
-#     async def check(self) -> bool:
-#         return True
-
-
 class TgPoller(Poller):
     def __init__(self, bus: MessageBus, repo: AbstractRepo, bot: aiogram.Bot) -> None:
         """Initialize of poller"""
@@ -240,7 +240,8 @@ class TgPoller(Poller):
         await self.bus.public_message(message=message)
 
     async def process_button_push(
-        self, query: aiogram.types.CallbackQuery,  # callback_data: str
+        self,
+        query: aiogram.types.CallbackQuery,  # callback_data: str
     ) -> None:
         """Process pushed button"""
         print("button pushed")
@@ -318,7 +319,9 @@ class ConcreteExecutor(Executor):
             if node.buttons is not None:
                 buttons: None | tp.List[Button] = []
                 for b in node.buttons:
-                    buttons.append(Button(text=b.text, callback_data=f"{b.next_node_id}"))
+                    buttons.append(
+                        Button(text=b.text, callback_data=f"{b.next_node_id}")
+                    )
             else:
                 buttons = None
             out_event = OutEvent(user=user, text=node.value, buttons=buttons)
@@ -350,7 +353,11 @@ class ConcreteExecutor(Executor):
         print(f"current node is {current_node.id}")
         new_events: tp.List[OutEvent] = []
         next_node = current_scenario.get_next_node(current_node)
-        if (next_node is None) and (current_node.node_type == NodeType.outMessage) and (current_node.buttons is not None):
+        if (
+            (next_node is None)
+            and (current_node.node_type == NodeType.outMessage)
+            and (current_node.buttons is not None)
+        ):
             print("tp0")
             if event.button_pushed is None:
                 print("tp1")
@@ -377,17 +384,25 @@ class ConcreteExecutor(Executor):
                             await self.repo.set_user_current_scenario(user, None)
                             await self.repo.set_user_current_node(user, None)
                         elif next_next_node.node_type == NodeType.inMessage:
-                            await self.repo.set_user_current_node(user, next_next_node.id)
+                            await self.repo.set_user_current_node(
+                                user, next_next_node.id
+                            )
                         elif next_next_node.node_type == NodeType.outMessage:
-                            new_event = self.translate_node_to_event(user, next_next_node)
+                            new_event = self.translate_node_to_event(
+                                user, next_next_node
+                            )
                             new_events.append(new_event)
-                            next_next_next_node = current_scenario.get_next_node(next_next_node)
+                            next_next_next_node = current_scenario.get_next_node(
+                                next_next_node
+                            )
                             if next_next_next_node is None:
                                 # очищаем текущий сценарий и текущую ноду пользователя
                                 await self.repo.set_user_current_scenario(user, None)
                                 await self.repo.set_user_current_node(user, None)
                             elif next_next_next_node.node_type == NodeType.inMessage:
-                                await self.repo.set_user_current_node(user, next_next_next_node.id)
+                                await self.repo.set_user_current_node(
+                                    user, next_next_next_node.id
+                                )
                             elif next_next_node.node_type == NodeType.outMessage:
                                 ...
                     else:
@@ -426,10 +441,17 @@ class ConcreteExecutor(Executor):
                         print("tp14")
                         new_event = self.translate_node_to_event(user, next_next_node)
                         new_events.append(new_event)
-                        next_next_next_node = current_scenario.get_next_node(next_next_node)
-                        if next_next_next_node is None and next_next_node.buttons is not None:
+                        next_next_next_node = current_scenario.get_next_node(
+                            next_next_node
+                        )
+                        if (
+                            next_next_next_node is None
+                            and next_next_node.buttons is not None
+                        ):
                             print("tp14_1")
-                            await self.repo.set_user_current_node(user, next_next_node.id)
+                            await self.repo.set_user_current_node(
+                                user, next_next_node.id
+                            )
                         elif next_next_next_node is None:
                             print("tp15")
                             # очищаем текущий сценарий и текущую ноду пользователя
@@ -437,7 +459,9 @@ class ConcreteExecutor(Executor):
                             await self.repo.set_user_current_node(user, None)
                         elif next_next_next_node.node_type == NodeType.inMessage:
                             print("tp16")
-                            await self.repo.set_user_current_node(user, next_next_next_node.id)
+                            await self.repo.set_user_current_node(
+                                user, next_next_next_node.id
+                            )
                         elif next_next_node.node_type == NodeType.outMessage:
                             ...
                 else:
