@@ -1,7 +1,7 @@
 import typing as tp
 from dataclasses import dataclass
 
-from src.domain.model import Event, Scenario
+from src.domain.model import Event, Scenario, NodeType
 from src.domain.model import User
 
 
@@ -48,5 +48,9 @@ class EventProcessor:
             current_node = current_scenario.get_node_by_id(current_scenario.root_id)
         else:
             current_node = current_scenario.get_node_by_id(current_node_id)
+        if current_node.node_type != NodeType.inMessage or not current_node.buttons:
+            raise Exception("Start executing not from input event")
+        if event.button_pushed_next and event.text:
+            raise Exception("Not acceptable text and buttons at same time in InEvent")
         ...
         return []
