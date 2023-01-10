@@ -4,6 +4,7 @@ import typing as tp
 import xml.etree.cElementTree as et
 from abc import ABC
 from abc import abstractmethod
+from collections import defaultdict
 
 from src.dialogues.domain import Button
 from src.dialogues.domain import Dialogue
@@ -18,7 +19,7 @@ class Parser(ABC):
         """
 
     @abstractmethod
-    def parse(self, input_stuff: tp.Any) -> tp.List[DialogueNode]:
+    def parse(self, input_stuff: tp.Any) -> tp.Tuple[str, tp.List[DialogueNode]]:
         raise
 
 
@@ -28,16 +29,16 @@ class XMLParser(Parser):
         return value.split(":")[0]
 
     @staticmethod
-    def _get_text_template(value: str) -> None | str:
+    def _get_template(value: str) -> None | str:
         try:
-            return value.split(":")[1]
+            return "".join(value.split(":")[1:])
         except IndexError:
             return None
 
     @staticmethod
-    def _get_key_by_value(value: str, search_dict: tp.Dict[str, str]) -> str:
+    def _get_key_by_value(value: str, search_dict: tp.Dict[str, tp.List[str]]) -> str:
         for k, v in search_dict.items():
-            if v == value:
+            if value in v:
                 return k
         raise
 
@@ -47,47 +48,67 @@ class XMLParser(Parser):
         parent_id = "WIyWlLk6GJQsqaUBKTNV-1"
         nodes = tree.findall(f".//mxCell[@parent='{parent_id}']")
         result = {}
-        arrows = {}
+        arrows: tp.Dict[str, tp.List[str]] = defaultdict(list)
+        # поиск всех стрелок
         for n in nodes:
             xml_value = n.get("value")
-            if xml_value is None:
+            if not xml_value:
                 source_id = n.get("source")
                 target_id = n.get("target")
-                arrows[source_id] = target_id
+                if source_id and target_id:
+                    arrows[source_id].append(target_id)
+        for k, v in arrows.items():
+            print(f"{k} -> {v}")
+        # raise
+        # поиск всех блоков нод (кроме btnArray)
         for n in nodes:
             xml_value = n.get("value")
-            if xml_value is not None and xml_value != "btnArray":
+            if xml_value and xml_value != "btnArray":
                 try:
                     node_type = NodeType(self._get_node_type(xml_value))
                 except ValueError:
-                    print("unknown NodeType")
+                    # todo: сделать грамотную обработку если это заметка
+                    print(f"unknown NodeType, {xml_value}")
                     continue
-                value = self._get_text_template(xml_value)
+                node_value = self._get_template(xml_value)
+                element_id = n.get("id")
+                if not element_id:
+                    print("node has no element id")
+                    continue
                 dialogue_node = DialogueNode(
-                    element_id=n.get("id"), node_type=node_type, value=value
+                    element_id=element_id, node_type=node_type, value=node_value
                 )
-                dialogue_node.add_next(arrows.get(dialogue_node.id))
+                next_nodes = arrows.get(dialogue_node.id)
+                dialogue_node.add_next(next_nodes)
                 result[dialogue_node.id] = dialogue_node
+        # присоединение кнопок к целевым блокам
         for n in nodes:
             xml_value = n.get("value")
             if xml_value == "btnArray":
                 array_id = n.get("id")
+                if not array_id:
+                    print("button array has no id")
+                    continue
                 xml_buttons = tree.findall(f".//mxCell[@parent='{array_id}']")
                 buttons = []
                 for b in xml_buttons:
                     text = b.get("value")
+                    if not text:
+                        print("button has no text")
+                        raise
                     button_id = b.get("id")
-                    next_node_id = arrows[button_id]
-                    button = Button(button_text=text, next_node_id=next_node_id)
+                    if not button_id:
+                        print("has no reference in button")
+                        continue
+                    next_node_ids = arrows.get(button_id)
+                    if not next_node_ids:
+                        print("button must have any child")
+                        raise
+                    button = Button(button_text=text, next_node_ids=next_node_ids)
                     buttons.append(button)
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
-                result[source_id].next_node_id = None
-        # root_id = (
-        #     list(result.keys())[0].split("-")[0]
-        #     + "-"
-        #     + str(min([int(x.split("-")[-1]) for x in result.keys()]))
-        # )
+                result[source_id].next_node_ids = None
         root_id = result[list(result.keys())[0]].id
         return root_id, list(result.values())
 

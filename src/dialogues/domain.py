@@ -1,17 +1,9 @@
 import typing as tp
 from enum import Enum
 
-texts = {
-    "TEXT1": "test text 1",
-    "TEXT2": "test text 2",
-    "TEXT3": "test text 3",
-    "TEXT4": "test text 4",
-    "TEXT5": "test text 5",
-    "TEXT6": "test text 6",
-    "TEXT7": "test text 7",
-    "TEXT8": "test text 8",
-    "TEXT9": "test text 9",
-}
+# from src.dialogues.scenario_loader import NodeType
+
+# from src.executor.domain import NodeType
 
 
 class NodeType(Enum):
@@ -25,10 +17,23 @@ class NodeType(Enum):
     ...
 
 
+texts = {
+    "TEXT1": "test text 1",
+    "TEXT2": "test text 2",
+    "TEXT3": "test text 3",
+    "TEXT4": "test text 4",
+    "TEXT5": "test text 5",
+    "TEXT6": "test text 6",
+    "TEXT7": "test text 7",
+    "TEXT8": "test text 8",
+    "TEXT9": "test text 9",
+}
+
+
 class Button:
-    def __init__(self, button_text: str, next_node_id: str) -> None:
+    def __init__(self, button_text: str, next_node_ids: tp.List[str]) -> None:
         self._text = button_text
-        self.next_node_id = next_node_id
+        self.next_node_ids = next_node_ids
 
     @property
     def text(self) -> str:
@@ -46,17 +51,17 @@ class DialogueNode:
         self.id = element_id
         self.node_type = node_type
         self._value = value
-        self.next_node_id: None | str = None
+        self.next_node_ids: None | tp.List[str] = None
         self.buttons = buttons
 
-    def add_next(self, node_id: str) -> None:
-        self.next_node_id = node_id
+    def add_next(self, node_ids: tp.List[str] | None) -> None:
+        self.next_node_ids = node_ids
 
-    @property
-    def value(self) -> str:
-        if self._value is None:
-            return "text not found"
-        return texts.get(self._value, "text not found")
+    # @property
+    # def value(self) -> str:
+    #     if self._value is None:
+    #         return "text not found"
+    #     return texts.get(self._value, "text not found")
 
 
 class Dialogue:
@@ -71,8 +76,8 @@ class Dialogue:
         return self._nodes[self.root_id]
 
     def get_next_node(self, current_node: DialogueNode) -> tp.Optional[DialogueNode]:
-        next_node_id = current_node.next_node_id
-        if next_node_id is None:
+        next_node_ids = current_node.next_node_ids
+        if next_node_ids is None:
             return None
         return self._nodes[next_node_id]
 
@@ -88,8 +93,8 @@ class Dialogue:
             if v.buttons is not None:
                 buttons = []
                 for b in v.buttons:
-                    buttons.append((b.text, b.next_node_id))
-                text += f"{k}, {v.node_type}, {v.value}, {v.next_node_id} {buttons}\n"
+                    buttons.append((b.text, b.next_node_ids))
+                text += f"{k}, {v.node_type}, {v._value}, {v.next_node_ids} {buttons}\n"
             else:
-                text += f"{k}, {v.node_type}, {v.value}, {v.next_node_id}\n"
+                text += f"{k}, {v.node_type}, {v._value}, {v.next_node_ids}\n"
         return text[:-1]

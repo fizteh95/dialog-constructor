@@ -5,10 +5,10 @@ from aiogram import Bot
 from src.dialogues.domain import Dialogue
 from src.dialogues.scenario_loader import XMLParser
 from src.executor.domain import ConcreteExecutor
-from src.executor.domain import ConcreteMessageBus
-from src.executor.domain import InMemoryRepo
-from src.executor.domain import TgPoller
-from src.executor.domain import TgSender
+from src.message_bus.domain import ConcreteMessageBus
+from src.poller.domain import TgPoller
+from src.repository.repository import InMemoryRepo
+from src.sender.domain import TgSender
 
 
 async def main() -> None:
