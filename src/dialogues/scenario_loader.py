@@ -57,7 +57,11 @@ class XMLParser(Parser):
         for n in nodes:
             xml_value = n.get("value")
             if xml_value is not None and xml_value != "btnArray":
-                node_type = NodeType(self._get_node_type(xml_value))
+                try:
+                    node_type = NodeType(self._get_node_type(xml_value))
+                except ValueError:
+                    print("unknown NodeType")
+                    continue
                 value = self._get_text_template(xml_value)
                 dialogue_node = DialogueNode(
                     element_id=n.get("id"), node_type=node_type, value=value
@@ -79,16 +83,17 @@ class XMLParser(Parser):
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
                 result[source_id].next_node_id = None
-        root_id = (
-            list(result.keys())[0].split("-")[0]
-            + "-"
-            + str(min([int(x.split("-")[-1]) for x in result.keys()]))
-        )
+        # root_id = (
+        #     list(result.keys())[0].split("-")[0]
+        #     + "-"
+        #     + str(min([int(x.split("-")[-1]) for x in result.keys()]))
+        # )
+        root_id = result[list(result.keys())[0]].id
         return root_id, list(result.values())
 
 
 def main() -> None:
-    xml_src_path = "../../src/resources/dialogue-schema-test.xml"
+    xml_src_path = "../../src/resources/weather-demo.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
     dialogue = Dialogue(root_id=root_id, name="Test scenario", nodes=nodes)
