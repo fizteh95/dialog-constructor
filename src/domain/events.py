@@ -1,30 +1,7 @@
+import copy
 import typing as tp
-from dataclasses import dataclass
 
-from src.domain.model import Event, Scenario, NodeType
-from src.domain.model import User
-
-
-@dataclass
-class InEvent(Event):
-    user: User
-    text: tp.Optional[str] = None
-    button_pushed_next: tp.Optional[str] = None
-
-
-@dataclass
-class Button:
-    text: str
-    callback_data: tp.Optional[str]
-
-
-@dataclass
-class OutEvent(Event):
-    user: User
-    text: str
-    buttons: tp.Optional[tp.List[Button]] = None
-    edited_node: tp.Optional[str] = None
-    ...
+from src.domain.model import Event, Scenario, NodeType, ExecuteNode, InEvent
 
 
 class EventProcessor:
@@ -37,20 +14,132 @@ class EventProcessor:
         if self.default_scenario_name not in self.scenarios:
             raise Exception("No scenario with default name in scenarios")
 
-    def process_event(self, event: InEvent) -> tp.List[OutEvent]:
-        current_scenario_name = event.user.current_scenario_name
+    @staticmethod
+    def get_next(scenario: Scenario, current_node: ExecuteNode, event: InEvent) -> tp.List[ExecuteNode]:
+        # два случая - если из кнопки ищем потомков, или из обычного блока
+        if event.button_pushed_next:
+            res_from_button = []
+            for n in event.button_pushed_next.split(","):
+                res_from_button.append(scenario.get_node_by_id(n))
+            return res_from_button
+        else:
+            if current_node.next_ids is not None:
+                res_from_node = []
+                for n in current_node.next_ids:
+                    res_from_node.append(scenario.get_node_by_id(n))
+                return res_from_node
+        return []
+
+    async def process_event(self, event: InEvent, ctx: tp.Dict[str, str]) -> tp.Tuple[tp.List[Event], tp.Dict[str, str]]:
+        """
+        Ограничения блок-схемы сценария:
+        - должен начинаться с inMessage
+        - во входящем событии должна быть нажатая кнопка или текст
+        - одновременно во входящем событии не должно быть и нажатой кнопки и текста
+        - нода inMessage должна быть единственным потомком для родителя
+        - выполняется только один потомок ноды из всех сиблингов, у которого у первого появился ответ (для текущих
+        блок-схем исполнение идет по порядку добавления блока на схему)
+        - после inMessage должна быть хотя бы одна нода для выполнения
+        :param event: входящее событие, текст или нажатая кнопка
+        :param ctx: контекст юзера в данном сценарии
+        :return: список исходящих событий и словарь для обновления контекста
+        """
+        user = event.user
+        current_scenario_name = user.current_scenario_name
         if current_scenario_name is None:
             current_scenario = self.scenarios[self.default_scenario_name]
         else:
             current_scenario = self.scenarios.get(current_scenario_name, self.scenarios[self.default_scenario_name])
-        current_node_id = event.user.current_node_id
+        current_node_id = user.current_node_id
         if current_node_id is None:
             current_node = current_scenario.get_node_by_id(current_scenario.root_id)
         else:
             current_node = current_scenario.get_node_by_id(current_node_id)
-        if current_node.node_type != NodeType.inMessage or not current_node.buttons:
+        if current_node.node_type != NodeType.inMessage and not current_node.buttons:
             raise Exception("Start executing not from input event")
         if event.button_pushed_next and event.text:
             raise Exception("Not acceptable text and buttons at same time in InEvent")
+
+        out_events: tp.List[Event] = []
+
+        if (current_node.node_type == NodeType.inMessage and not event.text) or (current_node.node_type != NodeType.inMessage and event.text):
+            raise Exception("Dont match input text and current node type")
+        elif current_node.node_type == NodeType.inMessage and event.text:
+            # исполнение стартовой ноды и ее потомков
+            _, _, res = await current_node.execute(user, ctx, event.text)
+            next_nodes = self.get_next(current_scenario, current_node, event)
+            for n_n in next_nodes:
+                print(n_n.element_id)
+                output, to_update_ctx, text_for_pipeline = await n_n.execute(user, ctx, res)
+                if text_for_pipeline or to_update_ctx or output:
+                    print("tp2")
+                    print(output)
+                    print(to_update_ctx)
+                    print(text_for_pipeline)
+                    ctx.update(to_update_ctx)
+                    out_events += output
+                    executed_node = copy.deepcopy(n_n)
+                    text_to_next = copy.deepcopy(text_for_pipeline)
+                    break
+            else:
+                raise Exception("No block executed after inMessage")
+
+            last_input_node: None | ExecuteNode = None
+            # если после сообщения с кнопками будет еще сообщение исходящее
+            if executed_node.buttons:
+                last_input_node = copy.deepcopy(executed_node)
+
+            # поиск и исполнение третьей очереди блоков
+            next_nodes = self.get_next(current_scenario, executed_node, event)
+            for n_n in next_nodes:
+                if n_n.node_type == NodeType.inMessage:
+                    await user.update_current_node_id(n_n.element_id)
+                    return out_events, ctx
+            for n_n in next_nodes:
+                output, to_update_ctx, text_for_pipeline = await n_n.execute(user, ctx, text_to_next)
+                if text_for_pipeline or to_update_ctx or output:
+                    ctx.update(to_update_ctx)
+                    out_events += output
+                    executed_node = copy.deepcopy(n_n)
+                    text_to_next = copy.deepcopy(text_for_pipeline)
+                    break
+            else:
+                # если не было следующих нод или ничего не вернулось
+                if last_input_node is not None:
+                    await event.user.update_current_node_id(last_input_node.element_id)
+                    return out_events, ctx
+                else:
+                    # raise Exception("No node to continue scenario")
+                    await user.update_current_node_id(None)
+                    await user.update_current_scenario_name(None)
+                    return out_events, ctx
+
+            # поиск и исполнение четвертой очереди блоков
+            next_nodes = self.get_next(current_scenario, executed_node, event)
+            for n_n in next_nodes:
+                if n_n.node_type == NodeType.inMessage:
+                    await user.update_current_node_id(n_n.element_id)
+                    return out_events, ctx
+            for n_n in next_nodes:
+                output, to_update_ctx, text_for_pipeline = await n_n.execute(user, ctx, text_to_next)
+                if text_for_pipeline or to_update_ctx or output:
+                    ctx.update(to_update_ctx)
+                    out_events += output
+                    executed_node = copy.deepcopy(n_n)
+                    text_to_next = copy.deepcopy(text_for_pipeline)
+                    break
+            else:
+                # если не было следующих нод или ничего не вернулось
+                if last_input_node is not None:
+                    await user.update_current_node_id(last_input_node.element_id)
+                    return out_events, ctx
+                else:
+                    # raise Exception("No node to continue scenario")
+                    await user.update_current_node_id(None)
+                    await user.update_current_scenario_name(None)
+                    return out_events, ctx
+
+            ...
+
         ...
-        return []
+        return [], ctx

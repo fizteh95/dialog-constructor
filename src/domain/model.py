@@ -11,13 +11,41 @@ class Event(ABC):
 
 @dataclass
 class User:
-    outer_id: int
+    outer_id: str
     nickname: None | str = None
     name: None | str = None
     surname: None | str = None
     patronymic: None | str = None
     current_scenario_name: None | str = None
     current_node_id: None | str = None
+
+    async def update_current_node_id(self, node_id: str | None) -> None:
+        self.current_node_id = node_id
+
+    async def update_current_scenario_name(self, name: str | None) -> None:
+        self.current_scenario_name = name
+
+
+@dataclass
+class InEvent(Event):
+    user: User
+    text: tp.Optional[str] = None
+    button_pushed_next: tp.Optional[str] = None
+
+
+@dataclass
+class Button:
+    text: str
+    callback_data: tp.Optional[str]
+
+
+@dataclass
+class OutEvent(Event):
+    user: User
+    text: str
+    buttons: tp.Optional[tp.List[Button]] = None
+    node_to_edit: tp.Optional[str] = None
+    ...
 
 
 class NodeType(Enum):
@@ -43,70 +71,76 @@ class ExecuteNode(ABC):
 
     @abstractmethod
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
         """
         Исполнение ноды, берет входные данные, отдает событие и текст для дальнейшего пайплайна
+        :param user: юзер для создания исходящего события
         :param ctx: контекст исполнения, все переменные юзера и глобальные (для этого сценария)
         :param in_text: текст с предыдущего шага пайплайна
-        :return: тапл из списков исходящих событий и текст для дальнейшей обработки
+        :return: тапл из списков исходящих событий, обновления контекста и текст для дальнейшей обработки
         """
 
 
 class InMessage(ExecuteNode):
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
-        ...
-        return [], ""
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
+        if in_text:
+            return [], {}, in_text
+        else:
+            return [], {}, ""
 
 
 class OutMessage(ExecuteNode):
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
+        out_event = OutEvent(user=user, text=self.value)
+        if self.buttons:
+            out_event.buttons = [Button(text=x[0], callback_data=x[1]) for x in self.buttons]
         ...
-        return [], ""
+        return [out_event], {}, ""
 
 
 class EditMessage(ExecuteNode):
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
         ...
-        return [], ""
+        return [], {}, ""
 
 
 class DataExtract(ExecuteNode):
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
         ...
-        return [], ""
+        return [], {}, ""
 
 
 class LogicalUnit(ExecuteNode):
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
         ...
-        return [], ""
+        return [], {}, ""
 
 
 class RemoteRequest(ExecuteNode):
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
         ...
-        return [], ""
+        return [], {}, ""
 
 
 class SetVariable(ExecuteNode):
     async def execute(
-        self, ctx: tp.Dict[str, str], in_text: str | None = None
-    ) -> tp.Tuple[tp.List[Event], str]:
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
         ...
-        return [], ""
+        return [], {}, ""
 
 
 @dataclass
