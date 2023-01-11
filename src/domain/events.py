@@ -23,7 +23,9 @@ class EventProcessor:
 
     @staticmethod
     def get_next(
-        scenario: Scenario, current_node: ExecuteNode | None = None, event: InEvent | None = None
+        scenario: Scenario,
+        current_node: ExecuteNode | None = None,
+        event: InEvent | None = None,
     ) -> tp.List[ExecuteNode]:
         if current_node is not None and event is not None:
             raise Exception("Not acceptable node and event both in finding next node")
@@ -172,7 +174,9 @@ class EventProcessor:
                 else:
                     # если не было следующих нод или ничего не вернулось
                     if last_input_node_from_button is not None:
-                        await user.update_current_node_id(last_input_node_from_button.element_id)
+                        await user.update_current_node_id(
+                            last_input_node_from_button.element_id
+                        )
                         return out_events, ctx
                     else:
                         await user.update_current_node_id(None)

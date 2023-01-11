@@ -1,3 +1,4 @@
+import re
 import typing as tp
 from abc import ABC
 from abc import abstractmethod
@@ -101,7 +102,6 @@ class OutMessage(ExecuteNode):
             out_event.buttons = [
                 Button(text=x[0], callback_data=x[1]) for x in self.buttons
             ]
-        ...
         return [out_event], {}, ""
 
 
@@ -117,7 +117,19 @@ class DataExtract(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        ...
+        if in_text is None:
+            raise Exception("No input in extracting node")
+        extract_type = self.value.split("(")[0]
+        if extract_type == "re":
+            pattern = re.compile(rf"{self.value[3:-1]}")
+            res = pattern.match(in_text)
+            if res is None:
+                return [], {}, ""
+            return [], {}, in_text[res.start():res.end()]
+        elif extract_type == "json":
+            ...
+        else:
+            raise NotImplementedError("Such data extract type not implemented")
         return [], {}, ""
 
 
