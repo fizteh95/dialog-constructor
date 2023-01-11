@@ -98,7 +98,9 @@ class OutMessage(ExecuteNode):
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
         out_event = OutEvent(user=user, text=self.value)
         if self.buttons:
-            out_event.buttons = [Button(text=x[0], callback_data=x[1]) for x in self.buttons]
+            out_event.buttons = [
+                Button(text=x[0], callback_data=x[1]) for x in self.buttons
+            ]
         ...
         return [out_event], {}, ""
 
