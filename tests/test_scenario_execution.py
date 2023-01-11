@@ -411,3 +411,18 @@ async def test_re_data_extract() -> None:
     assert text_to_pipeline == "-101"
     _, _, text_to_pipeline = await extract_node.execute(user, ctx, "-1010")
     assert text_to_pipeline == ""
+
+
+@pytest.mark.asyncio
+async def test_re_data_extract_pass_scenario() -> None:
+    ...
+
+
+@pytest.mark.asyncio
+async def test_re_data_extract_block_scenario() -> None:
+    ...
+
+
+@pytest.mark.asyncio
+async def test_re_data_extract_choose_only_way() -> None:
+    ...
