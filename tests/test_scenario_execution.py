@@ -1,3 +1,4 @@
+import json
 import typing as tp
 
 import pytest
@@ -10,6 +11,7 @@ from src.domain.model import LogicalUnit
 from src.domain.model import NodeType
 from src.domain.model import OutEvent
 from src.domain.model import OutMessage
+from src.domain.model import RemoteRequest
 from src.domain.model import Scenario
 from src.domain.model import SetVariable
 from src.domain.model import User
@@ -704,4 +706,90 @@ async def test_set_variable() -> None:
 
 @pytest.mark.asyncio
 async def test_set_variable_rewrite_old_value() -> None:
+    in_node = InMessage(
+        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+    )
+    set_variable = SetVariable(
+        element_id="id_2",
+        value="user(old_var)",
+        next_ids=["id_3"],
+        node_type=NodeType.setVariable,
+    )
+    out_node = OutMessage(
+        element_id="id_3", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
+    )
+    test_scenario = Scenario(
+        "test", "id_1", {"id_1": in_node, "id_2": set_variable, "id_3": out_node}
+    )
+    ep = EventProcessor([test_scenario], test_scenario.name)
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="Hi!")
+    ctx: tp.Dict[str, str] = {"old_var": "some_text"}
+    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    assert len(new_ctx) == 1
+    assert new_ctx["old_var"] == "Hi!"
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == "TEXT1"
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+async def test_remote_request_node() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {}
+    remote_request = RemoteRequest(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.remoteRequest,
+        value="""(curl -XGET 'https://catfact.ninja/fact')""",
+    )
+    events, new_ctx, text_to_pipeline = await remote_request.execute(user, ctx, "")
+    assert events == []
+    assert new_ctx == {}
+    ret = json.loads(text_to_pipeline)
+    assert "fact" in ret and "length" in ret
+    assert len(ret["fact"]) == ret["length"]
+
+
+@pytest.mark.asyncio
+async def test_data_extract_json() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {}
+    extract_node = DataExtract(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.dataExtract,
+        value="""json(["first_key"][0]["second_key"])""",
+    )
+    json_to_extract = """{"first_key": [{"second_key": "tadam!"}]}"""
+    events, new_ctx, text_to_pipeline = await extract_node.execute(
+        user, ctx, json_to_extract
+    )
+    assert events == []
+    assert new_ctx == {}
+    assert text_to_pipeline == "tadam!"
+
+
+@pytest.mark.asyncio
+async def test_remote_request_node_templating() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {"some_key": "fact"}
+    remote_request = RemoteRequest(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.remoteRequest,
+        value="""(curl -XGET 'https://catfact.ninja/#some_key#')""",  # fact
+    )
+    events, new_ctx, text_to_pipeline = await remote_request.execute(user, ctx, "")
+    assert events == []
+    assert new_ctx == {}
+    ret = json.loads(text_to_pipeline)
+    assert "fact" in ret and "length" in ret
+    assert len(ret["fact"]) == ret["length"]
+
+
+@pytest.mark.asyncio
+async def test_edit_message() -> None:
     ...

@@ -1,9 +1,13 @@
+import json
 import re
 import typing as tp
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
+
+import aiohttp
+import curlparser
 
 
 class Event(ABC):
@@ -127,10 +131,11 @@ class DataExtract(ExecuteNode):
                 return [], {}, ""
             return [], {}, in_text[res.start() : res.end()]
         elif extract_type == "json":
-            ...
+            input_json = json.loads(in_text)
+            search_path = self.value[5:-1]
+            return [], {}, eval(f"input_json{search_path}")
         else:
             raise NotImplementedError("Such data extract type not implemented")
-        return [], {}, ""
 
 
 class LogicalUnit(ExecuteNode):
@@ -150,8 +155,22 @@ class RemoteRequest(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        ...
-        return [], {}, ""
+        curl_str = self.value[1:-1]
+        parsed_curl = curlparser.parse(curl_str)
+        request_url = parsed_curl.url
+        for k, v in ctx.items():
+            request_url = request_url.replace(f"#{k}#", v)
+        if parsed_curl.method == "GET":
+            async with aiohttp.ClientSession() as session:
+                async with session.get(request_url) as resp:
+                    res = await resp.text()
+        elif parsed_curl.method == "POST":
+            async with aiohttp.ClientSession() as session:
+                async with session.post(request_url, json=parsed_curl.json) as resp:
+                    res = await resp.text()
+        else:
+            raise NotImplementedError(f"{parsed_curl.method} method not implemented")
+        return [], {}, res
 
 
 class SetVariable(ExecuteNode):
