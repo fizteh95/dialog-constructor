@@ -125,7 +125,7 @@ class DataExtract(ExecuteNode):
             res = pattern.match(in_text)
             if res is None:
                 return [], {}, ""
-            return [], {}, in_text[res.start():res.end()]
+            return [], {}, in_text[res.start() : res.end()]
         elif extract_type == "json":
             ...
         else:
@@ -137,8 +137,13 @@ class LogicalUnit(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        ...
-        return [], {}, ""
+        if self.value == "NOT":
+            if in_text:
+                return [], {}, ""
+            else:
+                return [], {}, "Logical unit NOT was passed"
+        else:
+            raise NotImplementedError("Logical unit with such type not implemented")
 
 
 class RemoteRequest(ExecuteNode):
@@ -153,8 +158,14 @@ class SetVariable(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        ...
-        return [], {}, ""
+        var_name = self.value.split("(")[1].split(")")[0]
+        if in_text is None:
+            in_text = ""
+        var_type = self.value.split("(")[0]
+        if var_type == "user":
+            return [], {var_name: in_text}, ""
+        else:
+            raise NotImplementedError("Such variable type not implemented")
 
 
 @dataclass

@@ -114,7 +114,7 @@ class XMLParser(Parser):
 
 
 def main() -> None:
-    xml_src_path = "../../src/resources/weather-demo.xml"
+    xml_src_path = "../../src/resources/test_two_blocks.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
     dialogue = Dialogue(root_id=root_id, name="Test scenario", nodes=nodes)
