@@ -2,12 +2,11 @@ import typing as tp
 from abc import ABC
 from abc import abstractmethod
 
-from src.executor.domain import Event
+from src.domain.model import Event
 
 
-class Subscriber:
-    @abstractmethod
-    async def handle_message(self, message: Event) -> None:
+class Subscriber(tp.Protocol):
+    async def handle_message(self, message: Event) -> tp.List[Event]:
         """Handle message from bus"""
 
 
@@ -52,4 +51,5 @@ class ConcreteMessageBus(MessageBus):
         while self.queue:
             current_message = self.queue.pop(0)
             for sub in self.services:
-                await sub.handle_message(current_message)
+                events = await sub.handle_message(current_message)
+                self.queue += events

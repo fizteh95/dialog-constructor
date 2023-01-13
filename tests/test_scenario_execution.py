@@ -5,6 +5,7 @@ import pytest
 
 from src.domain.events import EventProcessor
 from src.domain.model import DataExtract
+from src.domain.model import EditMessage
 from src.domain.model import InEvent
 from src.domain.model import InMessage
 from src.domain.model import LogicalUnit
@@ -792,4 +793,43 @@ async def test_remote_request_node_templating() -> None:
 
 @pytest.mark.asyncio
 async def test_edit_message() -> None:
-    ...
+    in_node = InMessage(
+        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=["id_3"],
+        node_type=NodeType.outMessage,
+    )
+    edit_node = EditMessage(
+        element_id="id_3",
+        value="TEXT2",
+        next_ids=["id_2", "id_4"],
+        node_type=NodeType.editMessage,
+    )
+    out_node2 = OutMessage(
+        element_id="id_4", value="TEXT3", next_ids=[], node_type=NodeType.outMessage
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node, "id_3": edit_node, "id_4": out_node2},
+    )
+    ep = EventProcessor([test_scenario], test_scenario.name)
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="Hi!")
+    ctx: tp.Dict[str, str] = {}
+    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    assert len(out_events) == 3
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == "TEXT1"
+    assert out_events[0].node_to_edit is None
+    assert isinstance(out_events[1], OutEvent)
+    assert out_events[1].text == "TEXT2"
+    assert out_events[1].node_to_edit == "id_2"
+    assert isinstance(out_events[2], OutEvent)
+    assert out_events[2].text == "TEXT3"
+    assert out_events[2].node_to_edit is None
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None

@@ -4,9 +4,9 @@ from aiogram import Bot
 
 from src.dialogues.domain import Dialogue
 from src.dialogues.scenario_loader import XMLParser
+from src.entrypoints.poller import TgPoller
 from src.executor.domain import ConcreteExecutor
 from src.message_bus.domain import ConcreteMessageBus
-from src.poller.domain import TgPoller
 from src.repository.repository import InMemoryRepo
 from src.sender.domain import TgSender
 

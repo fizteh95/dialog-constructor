@@ -93,6 +93,18 @@ class EventProcessor:
                 if n_n.node_type == NodeType.inMessage:
                     await user.update_current_node_id(n_n.element_id)
                     return out_events, ctx
+                elif n_n.node_type == NodeType.editMessage:
+                    output, _, text_for_pipeline = await n_n.execute(
+                        user, ctx, text_to_next
+                    )
+                    out_events += output
+                    if n_n.next_ids is None:
+                        raise Exception("Logical unit has no child")
+                    node_from_last_iteration = current_scenario.get_node_by_id(
+                        n_n.next_ids[1]
+                    )
+                    outer_continuer = True
+                    break
                 elif n_n.node_type == NodeType.logicalUnit:
                     _, _, text_for_pipeline = await n_n.execute(user, ctx, text_to_next)
                     if n_n.next_ids is None:
@@ -190,4 +202,11 @@ class EventProcessor:
                 ctx=ctx,
                 input_str="",
             )
+        return [], ctx
+
+    async def handle_message(
+        self, event: Event, ctx: tp.Dict[str, str]
+    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str]]:
+        if isinstance(event, InEvent):
+            return await self.process_event(event=event, ctx=ctx)
         return [], ctx

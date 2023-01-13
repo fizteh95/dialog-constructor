@@ -11,7 +11,7 @@ from src.users.domain import User
 
 class Poller(ABC):
     def __init__(self, bus: MessageBus, repo: AbstractRepo) -> None:
-        """Initialize of poller"""
+        """Initialize of entrypoints"""
         self.bus = bus
         self.repo = repo
 
@@ -22,7 +22,7 @@ class Poller(ABC):
 
 class TgPoller(Poller):
     def __init__(self, bus: MessageBus, repo: AbstractRepo, bot: aiogram.Bot) -> None:
-        """Initialize of poller"""
+        """Initialize of entrypoints"""
         super().__init__(bus, repo)
         self.bot = bot
         self.dp = aiogram.Dispatcher(self.bot)
@@ -31,7 +31,7 @@ class TgPoller(Poller):
 
     async def process_message(self, tg_message: aiogram.types.Message) -> None:
         """Process message from telegram"""
-        print(f"new text from poller {tg_message.text}")
+        print(f"new text from entrypoints {tg_message.text}")
         try:
             text = tg_message.text
         except Exception as e:

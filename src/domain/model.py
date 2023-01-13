@@ -113,8 +113,12 @@ class EditMessage(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        ...
-        return [], {}, ""
+        out_event = OutEvent(user=user, text=self.value, node_to_edit=self.next_ids[0])
+        if self.buttons:
+            out_event.buttons = [
+                Button(text=x[0], callback_data=x[1]) for x in self.buttons
+            ]
+        return [out_event], {}, ""
 
 
 class DataExtract(ExecuteNode):
@@ -131,7 +135,7 @@ class DataExtract(ExecuteNode):
                 return [], {}, ""
             return [], {}, in_text[res.start() : res.end()]
         elif extract_type == "json":
-            input_json = json.loads(in_text)
+            input_json = json.loads(in_text)  # noqa
             search_path = self.value[5:-1]
             return [], {}, eval(f"input_json{search_path}")
         else:
