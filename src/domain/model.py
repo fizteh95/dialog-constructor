@@ -48,6 +48,7 @@ class Button:
 class OutEvent(Event):
     user: User
     text: str
+    linked_node_id: tp.Optional[str] = None
     buttons: tp.Optional[tp.List[Button]] = None
     node_to_edit: tp.Optional[str] = None
     ...
@@ -101,7 +102,7 @@ class OutMessage(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        out_event = OutEvent(user=user, text=self.value)
+        out_event = OutEvent(user=user, text=self.value, linked_node_id=self.element_id)
         if self.buttons:
             out_event.buttons = [
                 Button(text=x[0], callback_data=x[1]) for x in self.buttons
@@ -113,7 +114,7 @@ class EditMessage(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        out_event = OutEvent(user=user, text=self.value, node_to_edit=self.next_ids[0])
+        out_event = OutEvent(user=user, text=self.value, node_to_edit=self.next_ids[0], linked_node_id=self.element_id)
         if self.buttons:
             out_event.buttons = [
                 Button(text=x[0], callback_data=x[1]) for x in self.buttons

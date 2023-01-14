@@ -13,6 +13,7 @@ from src.domain.model import Scenario
 from src.domain.model import User
 from src.service_layer.context import InMemoryContext
 from src.service_layer.message_bus import ConcreteMessageBus
+from src.service_layer.sender import Sender
 
 
 class FakeListener:
@@ -23,6 +24,17 @@ class FakeListener:
         """Интерфейс для взаимодействия с шиной"""
         self.events.append(message)
         return []
+
+
+class FakeSender(Sender):
+    def __init__(self, *args: tp.Any, **kwargs: tp.Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.out_messages: tp.List[OutEvent] = []
+
+    async def send(self, event: OutEvent, history: tp.List[tp.Dict[str, str]]) -> str | None:
+        """Send to outer service"""
+        self.out_messages.append(event)
+        return f"outer_{event.linked_node_id}"
 
 
 @pytest.mark.asyncio
