@@ -4,7 +4,7 @@ from abc import ABC
 from abc import abstractmethod
 
 from src.dialogues.domain import Dialogue
-from src.users.domain import User
+from src.domain.model import User
 
 
 class AbstractRepo(ABC):
@@ -14,7 +14,7 @@ class AbstractRepo(ABC):
         ...
 
     @abstractmethod
-    async def get_user(self, user_id: int) -> User:
+    async def get_user(self, user_id: str) -> User:
         ...
 
     @abstractmethod
@@ -42,14 +42,14 @@ class AbstractRepo(ABC):
 
 class InMemoryRepo(AbstractRepo):
     def __init__(self) -> None:
-        self.users: tp.Dict[int, User] = {}
+        self.users: tp.Dict[str, User] = {}
         self.dialogues: tp.Dict[str, Dialogue] = {}
 
     async def create_user(self, user: User) -> User:
         self.users[user.outer_id] = user
         return user
 
-    async def get_user(self, user_id: int) -> User:
+    async def get_user(self, user_id: str) -> User:
         return self.users[user_id]
 
     async def get_or_create_user(self, user: User) -> User:
@@ -63,7 +63,7 @@ class InMemoryRepo(AbstractRepo):
         self, user: User, scenario_name: str | None
     ) -> None:
         user_copy = copy.deepcopy(await self.get_user(user.outer_id))
-        user_copy.current_scenario_id = scenario_name
+        user_copy.current_scenario_name = scenario_name
         self.users[user.outer_id] = user_copy
 
     async def set_user_current_node(self, user: User, node_id: str | None) -> None:

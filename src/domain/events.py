@@ -59,6 +59,12 @@ class EventProcessor:
         next_nodes = self.get_next(
             current_scenario, current_node=start_node, event=start_event
         )
+        # DEBUG
+        if start_event and start_event.button_pushed_next:
+            print("tp-0")
+            print(next_nodes)
+            print("tp-1")
+        # ENDDEBUG
         for n_n in next_nodes:
             output, to_update_ctx, text_for_pipeline = await n_n.execute(
                 user, ctx, input_str
@@ -87,7 +93,16 @@ class EventProcessor:
             if outer_continuer:
                 next_nodes = [node_from_last_iteration]
             else:
-                next_nodes = self.get_next(current_scenario, current_node=executed_node)
+                if executed_node.node_type == NodeType.editMessage:
+                    next_nodes = [current_scenario.get_node_by_id(executed_node.next_ids[1])]
+                else:
+                    next_nodes = self.get_next(current_scenario, current_node=executed_node)
+                # DEBUG
+                if start_event and start_event.button_pushed_next:
+                    print("tp0")
+                    print(next_nodes)
+                    print("tp1")
+                # ENDDEBUG
             outer_continuer = False
             for n_n in next_nodes:
                 if n_n.node_type == NodeType.inMessage:
@@ -103,6 +118,10 @@ class EventProcessor:
                     node_from_last_iteration = current_scenario.get_node_by_id(
                         n_n.next_ids[1]
                     )
+                    # if not node_from_last_iteration.node_type == NodeType.inMessage:
+                    #     await user.update_current_node_id(None)
+                    #     await user.update_current_scenario_name(None)
+                    #     return out_events, ctx
                     outer_continuer = True
                     break
                 elif n_n.node_type == NodeType.logicalUnit:
@@ -180,11 +199,12 @@ class EventProcessor:
             raise Exception("Not acceptable text and buttons at same time in InEvent")
 
         # исполнение потомков стартовой ноды
-        if (current_node.node_type == NodeType.inMessage and not event.text) or (
-            current_node.node_type != NodeType.inMessage and event.text
-        ):
-            raise Exception("Dont match input text and current node type")
-        elif current_node.node_type == NodeType.inMessage and event.text:
+        # if (current_node.node_type == NodeType.inMessage and not event.text) or (
+        #     current_node.node_type != NodeType.inMessage and event.text
+        # ):
+        #     raise Exception("Dont match input text and current node type")
+        # el
+        if current_node.node_type == NodeType.inMessage and event.text:
             return await self._search_pathway(
                 current_scenario=current_scenario,
                 start_node=current_node,

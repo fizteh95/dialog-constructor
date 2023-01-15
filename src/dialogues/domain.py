@@ -1,6 +1,9 @@
 import typing as tp
 from enum import Enum
 
+from src.domain.model import ExecuteNode
+
+
 # from src.dialogues.scenario_loader import NodeType
 
 # from src.executor.domain import NodeType
@@ -30,58 +33,18 @@ texts = {
 }
 
 
-class Button:
-    def __init__(self, button_text: str, next_node_ids: tp.List[str]) -> None:
-        self._text = button_text
-        self.next_node_ids = next_node_ids
-
-    @property
-    def text(self) -> str:
-        return texts.get(self._text, "text not found")
-
-
-class DialogueNode:
-    def __init__(
-        self,
-        element_id: str,
-        node_type: NodeType,
-        value: str | None,
-        buttons: None | tp.List[Button] = None,
-    ) -> None:
-        self.id = element_id
-        self.node_type = node_type
-        self._value = value
-        self.next_node_ids: None | tp.List[str] = None
-        self.buttons = buttons
-
-    def add_next(self, node_ids: tp.List[str] | None) -> None:
-        self.next_node_ids = node_ids
-
-    # @property
-    # def value(self) -> str:
-    #     if self._value is None:
-    #         return "text not found"
-    #     return texts.get(self._value, "text not found")
-
-
 class Dialogue:
-    def __init__(self, root_id: str, name: str, nodes: tp.List[DialogueNode]) -> None:
+    def __init__(self, root_id: str, name: str, nodes: tp.List[ExecuteNode]) -> None:
         self.name = name
         self.root_id = root_id
         self._nodes = {}
         for node in nodes:
-            self._nodes[node.id] = node
+            self._nodes[node.element_id] = node
 
-    def get_init_root(self) -> DialogueNode:
+    def get_init_root(self) -> ExecuteNode:
         return self._nodes[self.root_id]
 
-    def get_next_node(self, current_node: DialogueNode) -> tp.Optional[DialogueNode]:
-        next_node_ids = current_node.next_node_ids
-        if next_node_ids is None:
-            return None
-        return self._nodes[next_node_id]
-
-    def get_node_by_id(self, node_id: str) -> DialogueNode:
+    def get_node_by_id(self, node_id: str) -> ExecuteNode:
         try:
             return self._nodes[node_id]
         except KeyError:
@@ -93,8 +56,8 @@ class Dialogue:
             if v.buttons is not None:
                 buttons = []
                 for b in v.buttons:
-                    buttons.append((b.text, b.next_node_ids))
-                text += f"{k}, {v.node_type}, {v._value}, {v.next_node_ids} {buttons}\n"
+                    buttons.append((b[0], b[1]))
+                text += f"{k}, {v.node_type}, {v.value}, {v.next_ids} {buttons}\n"
             else:
-                text += f"{k}, {v.node_type}, {v._value}, {v.next_node_ids}\n"
+                text += f"{k}, {v.node_type}, {v.value}, {v.next_ids}\n"
         return text[:-1]

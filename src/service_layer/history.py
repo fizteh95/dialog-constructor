@@ -3,7 +3,8 @@ from abc import ABC
 from abc import abstractmethod
 from collections import defaultdict
 
-from src.domain.model import Event, OutEvent
+from src.domain.model import Event
+from src.domain.model import OutEvent
 from src.service_layer.sender import Sender
 
 
@@ -34,7 +35,9 @@ class InMemoryHistory(HistoryWrapper):
         if isinstance(event, OutEvent):
             history = self.users_history[event.user.outer_id]
             outer_message_id = await self.sender.send(event=event, history=history)
-            self.users_history[event.user.outer_id].append({event.linked_node_id: outer_message_id})
+            self.users_history[event.user.outer_id].append(
+                {event.linked_node_id: outer_message_id}
+            )
 
     async def handle_message(self, message: Event) -> tp.List[Event]:
         """Интерфейс для взаимодействия с шиной"""

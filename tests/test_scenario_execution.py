@@ -833,3 +833,8 @@ async def test_edit_message() -> None:
     assert out_events[2].node_to_edit is None
     assert user.current_node_id is None
     assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+async def test_edit_message_and_final_node() -> None:
+    ...

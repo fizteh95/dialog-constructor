@@ -31,12 +31,13 @@ class InMemoryContext(ContextWrapper):
         )  # user_outer_id : {var_KEY: var_VALUE}
 
     async def process_event(self, event: Event) -> tp.List[Event]:
-        """Подмешивает контекст для исполнения сценария"""
+        """Подмешивает контекст для исполнения сценария в EventProcessor"""
         if isinstance(event, InEvent):
             ctx = self.users_ctx[event.user.outer_id]
             out_events, new_ctx = await self.event_processor.process_event(
                 event=event, ctx=ctx
             )
+            print(new_ctx)
             self.users_ctx[event.user.outer_id].update(new_ctx)
             return out_events
         return []

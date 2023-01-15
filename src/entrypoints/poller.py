@@ -1,12 +1,12 @@
 from abc import ABC
 from abc import abstractmethod
+import typing as tp
 
 import aiogram
 
-from src.executor.domain import InEvent
-from src.message_bus.domain import MessageBus
+from src.domain.model import User, InEvent
 from src.repository.repository import AbstractRepo
-from src.users.domain import User
+from src.service_layer.message_bus import MessageBus
 
 
 class Poller(ABC):
@@ -28,6 +28,8 @@ class TgPoller(Poller):
         self.dp = aiogram.Dispatcher(self.bot)
         self.dp.register_message_handler(self.process_message)
         self.dp.register_callback_query_handler(self.process_button_push)
+        # TODO:
+        self.users: tp.Dict[str, User] = {}
 
     async def process_message(self, tg_message: aiogram.types.Message) -> None:
         """Process message from telegram"""
@@ -43,7 +45,17 @@ class TgPoller(Poller):
             name=tg_message.from_user.first_name,
             surname=tg_message.from_user.last_name,
         )
-        await self.repo.get_or_create_user(user)
+        if tg_message.from_user.id not in self.users:
+            user = User(
+                outer_id=tg_message.from_user.id,
+                nickname=tg_message.from_user.username,
+                name=tg_message.from_user.first_name,
+                surname=tg_message.from_user.last_name,
+            )
+            self.users[tg_message.from_user.id] = user
+        else:
+            user = self.users[tg_message.from_user.id]
+        # await self.repo.get_or_create_user(user)
         message = InEvent(user=user, text=text)
         await self.bus.public_message(message=message)
 
@@ -54,6 +66,7 @@ class TgPoller(Poller):
         """Process pushed button"""
         print("button pushed")
         print(query.data)
+        await query.answer()
         try:
             pushed_button = str(query.data)
         except Exception as e:
@@ -66,7 +79,7 @@ class TgPoller(Poller):
             surname=query.from_user.last_name,
         )
         await self.repo.get_or_create_user(user)
-        message = InEvent(user=user, button_pushed=pushed_button)
+        message = InEvent(user=user, button_pushed_next=pushed_button)
         await self.bus.public_message(message=message)
 
     async def poll(self) -> None:

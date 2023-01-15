@@ -114,7 +114,12 @@ class EditMessage(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
-        out_event = OutEvent(user=user, text=self.value, node_to_edit=self.next_ids[0], linked_node_id=self.element_id)
+        out_event = OutEvent(
+            user=user,
+            text=self.value,
+            node_to_edit=self.next_ids[0],  # [0]
+            linked_node_id=self.element_id,
+        )
         if self.buttons:
             out_event.buttons = [
                 Button(text=x[0], callback_data=x[1]) for x in self.buttons
@@ -164,7 +169,7 @@ class RemoteRequest(ExecuteNode):
         parsed_curl = curlparser.parse(curl_str)
         request_url = parsed_curl.url
         for k, v in ctx.items():
-            request_url = request_url.replace(f"#{k}#", v)
+            request_url = request_url.replace(f"#{k}#", str(v))
         if parsed_curl.method == "GET":
             async with aiohttp.ClientSession() as session:
                 async with session.get(request_url) as resp:
