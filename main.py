@@ -1,8 +1,9 @@
 import asyncio
+from collections import defaultdict
+import typing as tp
 
 from aiogram import Bot
 
-from src.dialogues.domain import Dialogue
 from src.dialogues.scenario_loader import XMLParser
 from src.domain.events import EventProcessor
 from src.domain.model import Scenario
@@ -21,13 +22,15 @@ async def main() -> None:
     parsed_nodes = {x.element_id: x for x in nodes}
     scenario = Scenario(name="weather-demo", root_id=root_id, nodes=parsed_nodes)
 
+    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+
     ep = EventProcessor([scenario], scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep)
+    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
 
     bot = Bot(token="5421768118:AAHyArmRTT2PeNZgSS3_S21ZpqRoKp3QVdY")
 
     sender = TgSender(bot=bot, ctx=wrapped_ep.users_ctx)
-    wrapped_sender = InMemoryHistory(sender=sender)
+    wrapped_sender = InMemoryHistory(sender=sender, users_ctx=ctx)
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)

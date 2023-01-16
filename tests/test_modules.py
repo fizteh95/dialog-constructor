@@ -1,4 +1,5 @@
 import typing as tp
+from collections import defaultdict
 
 import pytest
 
@@ -33,12 +34,14 @@ class FakeSender(Sender):
     def __init__(self, *args: tp.Any, **kwargs: tp.Any) -> None:
         super().__init__(*args, **kwargs)
         self.out_messages: tp.List[OutEvent] = []
+        self.stored_ctx = {}
 
     async def send(
-        self, event: OutEvent, history: tp.List[tp.Dict[str, str]]
+        self, event: OutEvent, history: tp.List[tp.Dict[str, str]], ctx: tp.Dict[str, tp.Dict[str, str]],
     ) -> str | None:
         """Send to outer service"""
         self.out_messages.append(event)
+        self.stored_ctx = ctx
         return f"outer_{event.linked_node_id}"
 
 
@@ -52,8 +55,10 @@ async def test_message_bus() -> None:
     )
     test_scenario = Scenario("test", "id_1", {"id_1": in_node, "id_2": out_node})
 
+    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+
     ep = EventProcessor([test_scenario], test_scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep)
+    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
 
     listener = FakeListener()
 
@@ -96,8 +101,10 @@ async def test_context_saving() -> None:
         "test", "id_1", {"id_1": in_node, "id_2": set_variable, "id_3": out_node}
     )
 
+    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+
     ep = EventProcessor([test_scenario], test_scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep)
+    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
 
     listener = FakeListener()
 
@@ -142,11 +149,13 @@ async def test_out_messages_saving() -> None:
         {"id_1": in_node, "id_2": out_node, "id_3": edit_node, "id_4": out_node2},
     )
 
+    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+
     ep = EventProcessor([test_scenario], test_scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep)
+    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
 
     sender = FakeSender()
-    wrapped_sender = InMemoryHistory(sender=sender)
+    wrapped_sender = InMemoryHistory(sender=sender, users_ctx=ctx)
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
@@ -162,3 +171,44 @@ async def test_out_messages_saving() -> None:
     assert wrapped_sender.users_history["1"][0]["id_2"] == "outer_id_2"
     assert wrapped_sender.users_history["1"][1]["id_3"] == "outer_id_3"
     assert wrapped_sender.users_history["1"][2]["id_4"] == "outer_id_4"
+
+
+@pytest.mark.asyncio
+async def test_context_available_in_wrapped_sender() -> None:
+    in_node = InMessage(
+        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node},
+    )
+
+    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+    ctx["1"] = {"test_key": "test_value"}
+
+    ep = EventProcessor([test_scenario], test_scenario.name)
+    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
+
+    sender = FakeSender()
+    wrapped_sender = InMemoryHistory(sender=sender, users_ctx=ctx)
+
+    bus = ConcreteMessageBus()
+    bus.register(wrapped_ep)
+    bus.register(wrapped_sender)
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="Hi!")
+
+    await bus.public_message(in_event)
+
+    assert len(sender.stored_ctx) == 1
+    assert "1" in sender.stored_ctx
+    assert len(sender.stored_ctx["1"]) == 1
+    assert sender.stored_ctx["1"]["test_key"] == "test_value"

@@ -11,8 +11,9 @@ from src.domain.model import InEvent
 class ContextWrapper(ABC):
     """Хранит в себе контекст пользователей"""
 
-    def __init__(self, event_processor: EventProcessor) -> None:
+    def __init__(self, event_processor: EventProcessor, users_ctx: tp.Dict[str, tp.Dict[str, str]]) -> None:
         self.event_processor = event_processor
+        self.users_ctx = users_ctx  # user_outer_id : {var_KEY: var_VALUE}
 
     @abstractmethod
     async def process_event(self, event: Event) -> tp.List[Event]:
@@ -24,11 +25,8 @@ class ContextWrapper(ABC):
 
 
 class InMemoryContext(ContextWrapper):
-    def __init__(self, event_processor: EventProcessor) -> None:
-        super().__init__(event_processor=event_processor)
-        self.users_ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(
-            dict
-        )  # user_outer_id : {var_KEY: var_VALUE}
+    def __init__(self, event_processor: EventProcessor, users_ctx: tp.Dict[str, tp.Dict[str, str]]) -> None:
+        super().__init__(event_processor=event_processor, users_ctx=users_ctx)
 
     async def process_event(self, event: Event) -> tp.List[Event]:
         """Подмешивает контекст для исполнения сценария в EventProcessor"""

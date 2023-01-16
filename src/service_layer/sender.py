@@ -30,7 +30,7 @@ class Sender(ABC):
 
     @abstractmethod
     async def send(
-        self, event: OutEvent, history: tp.List[tp.Dict[str, str]]
+        self, event: OutEvent, history: tp.List[tp.Dict[str, str]], ctx: tp.Dict[str, tp.Dict[str, str]],
     ) -> str | None:
         """Send to outer service"""
 
@@ -40,8 +40,6 @@ class TgSender(Sender):
         """Initialize of sender"""
         super().__init__()
         self.bot = bot
-        # TODO: remove ctx
-        self.ctx = ctx
 
     @staticmethod
     async def _search_linked_message(
@@ -67,9 +65,9 @@ class TgSender(Sender):
                 )
         return keyboard
 
-    def prepare_text(self, user_outer_id: str, text: str) -> str:
+    def prepare_text(self, user_outer_id: str, text: str, ctx: tp.Dict[str, tp.Dict[str, str]],) -> str:
         # TODO: move to RE
-        current_ctx = self.ctx[user_outer_id]
+        current_ctx = ctx[user_outer_id]
         if text in texts:
             new_text = texts[text]
             if "$" in new_text:
@@ -84,7 +82,7 @@ class TgSender(Sender):
         return "Text not found"
 
     async def send(
-        self, event: OutEvent, history: tp.List[tp.Dict[str, str]]
+        self, event: OutEvent, history: tp.List[tp.Dict[str, str]], ctx: tp.Dict[str, tp.Dict[str, str]],
     ) -> str | None:
         """Send to outer service"""
         print("send message")
@@ -95,14 +93,14 @@ class TgSender(Sender):
             )
             res = await self.bot.edit_message_text(
                 chat_id=event.user.outer_id,
-                text=self.prepare_text(event.user.outer_id, event.text),
+                text=self.prepare_text(event.user.outer_id, event.text, ctx),
                 message_id=message_id_to_edit,
                 reply_markup=keyboard,
             )
         else:
             keyboard = await self.get_keyboard(event)
             res = await self.bot.send_message(
-                chat_id=event.user.outer_id, text=self.prepare_text(event.user.outer_id, event.text), reply_markup=keyboard
+                chat_id=event.user.outer_id, text=self.prepare_text(event.user.outer_id, event.text, ctx), reply_markup=keyboard
             )
         await asyncio.sleep(1)
         return str(res.message_id)
