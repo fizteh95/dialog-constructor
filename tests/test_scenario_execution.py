@@ -4,7 +4,8 @@ import typing as tp
 import pytest
 
 from src.domain.events import EventProcessor
-from src.domain.model import DataExtract, Button
+from src.domain.model import Button
+from src.domain.model import DataExtract
 from src.domain.model import EditMessage
 from src.domain.model import InEvent
 from src.domain.model import InMessage
@@ -846,7 +847,7 @@ async def test_edit_message_and_final_node() -> None:
         value="TEXT1",
         next_ids=[],
         node_type=NodeType.outMessage,
-        buttons=buttons
+        buttons=buttons,
     )
     edit_node = EditMessage(
         element_id="id_3",
@@ -903,7 +904,7 @@ async def test_button_push_without_editing() -> None:
         value="TEXT1",
         next_ids=[],
         node_type=NodeType.outMessage,
-        buttons=buttons
+        buttons=buttons,
     )
     edit_node = EditMessage(
         element_id="id_3",

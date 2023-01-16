@@ -1,6 +1,6 @@
 import asyncio
-from collections import defaultdict
 import typing as tp
+from collections import defaultdict
 
 from aiogram import Bot
 
@@ -25,12 +25,12 @@ async def main() -> None:
     ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
 
     ep = EventProcessor([scenario], scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
+    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)  # сюда репозиторий
 
-    bot = Bot(token="5421768118:AAHyArmRTT2PeNZgSS3_S21ZpqRoKp3QVdY")
+    bot = Bot(token="5023614422:AAEIwysH_RgMug_GpVV8b3ZpEw4kVnRL3IU")
 
-    sender = TgSender(bot=bot, ctx=wrapped_ep.users_ctx)
-    wrapped_sender = InMemoryHistory(sender=sender, users_ctx=ctx)
+    sender = TgSender(bot=bot)
+    wrapped_sender = InMemoryHistory(sender=sender, users_ctx=ctx)  # сюда репозиторий
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
@@ -40,7 +40,7 @@ async def main() -> None:
 
     repo = InMemoryRepo()
 
-    poller = TgPoller(bus=bus, repo=repo, bot=bot)
+    poller = TgPoller(bus=bus, repo=repo, bot=bot)  # сюда репозиторий
 
     await poller.poll()
 

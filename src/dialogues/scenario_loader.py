@@ -7,8 +7,16 @@ from abc import abstractmethod
 from collections import defaultdict
 
 from src.dialogues.domain import Dialogue
-from src.domain.model import ExecuteNode, Button, NodeType, InMessage, OutMessage, EditMessage, RemoteRequest, \
-    DataExtract, SetVariable, LogicalUnit
+from src.domain.model import Button
+from src.domain.model import DataExtract
+from src.domain.model import EditMessage
+from src.domain.model import ExecuteNode
+from src.domain.model import InMessage
+from src.domain.model import LogicalUnit
+from src.domain.model import NodeType
+from src.domain.model import OutMessage
+from src.domain.model import RemoteRequest
+from src.domain.model import SetVariable
 
 
 class Parser(ABC):
@@ -82,11 +90,22 @@ class XMLParser(Parser):
 
                 next_nodes = arrows.get(element_id)
 
-                class_dict = {"inMessage": InMessage, "outMessage": OutMessage, "editMessage": EditMessage,
-                              "remoteRequest": RemoteRequest, "dataExtract": DataExtract, "setVariable": SetVariable,
-                              "logicalUnit": LogicalUnit}
+                class_dict = {
+                    "inMessage": InMessage,
+                    "outMessage": OutMessage,
+                    "editMessage": EditMessage,
+                    "remoteRequest": RemoteRequest,
+                    "dataExtract": DataExtract,
+                    "setVariable": SetVariable,
+                    "logicalUnit": LogicalUnit,
+                }
                 need_class = class_dict[node_type.value]
-                dialogue_node = need_class(element_id=element_id, node_type=node_type, next_ids=next_nodes, value=node_value)
+                dialogue_node = need_class(
+                    element_id=element_id,
+                    node_type=node_type,
+                    next_ids=next_nodes,
+                    value=node_value,
+                )
 
                 # dialogue_node = ExecuteNode(
                 #     element_id=element_id, node_type=node_type, value=node_value
@@ -134,6 +153,7 @@ def main() -> None:
     # print(root_id)
     # print(dialogue)
     print(dialogue)
+
 
 """
 H9drS6L4HsgGu72-MB-w-10, NodeType.editMessage, TEXT10, ['H9drS6L4HsgGu72-MB-w-16', 'H9drS6L4HsgGu72-MB-w-0']

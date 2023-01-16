@@ -1,10 +1,11 @@
+import typing as tp
 from abc import ABC
 from abc import abstractmethod
-import typing as tp
 
 import aiogram
 
-from src.domain.model import User, InEvent
+from src.domain.model import InEvent
+from src.domain.model import User
 from src.repository.repository import AbstractRepo
 from src.service_layer.message_bus import MessageBus
 

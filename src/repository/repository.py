@@ -2,78 +2,66 @@ import copy
 import typing as tp
 from abc import ABC
 from abc import abstractmethod
+from collections import defaultdict
 
-from src.dialogues.domain import Dialogue
 from src.domain.model import User
 
 
 class AbstractRepo(ABC):
-    # TODO: split repos for every model
+    # TODO: split repo for every model
+
+    # User
     @abstractmethod
-    async def create_user(self, user: User) -> User:
-        ...
+    async def get_or_create_user(self, **kwargs: tp.Any) -> User:
+        """Get by outer_id or create user"""
 
     @abstractmethod
-    async def get_user(self, user_id: str) -> User:
-        ...
+    async def update_user(self, user: User) -> User:
+        """Update user fields"""
+
+    # Context
+    @abstractmethod
+    async def update_user_context(self, user: User, ctx_to_update: tp.Dict[str, str]) -> None:
+        """Update user context"""
 
     @abstractmethod
-    async def get_or_create_user(self, user: User) -> User:
-        ...
-
-    @abstractmethod
-    async def set_user_current_scenario(
-        self, user: User, scenario_name: str | None
-    ) -> None:
-        ...
-
-    @abstractmethod
-    async def set_user_current_node(self, user: User, node_id: str | None) -> None:
-        ...
-
-    @abstractmethod
-    async def create_dialogue_scenario(self, dialogue: Dialogue) -> Dialogue:
-        ...
-
-    @abstractmethod
-    async def get_dialogue(self, dialogue_name: str) -> Dialogue:
-        ...
+    async def get_user_context(self, user: User) -> tp.Dict[str, str]:
+        """Get user context"""
 
 
 class InMemoryRepo(AbstractRepo):
     def __init__(self) -> None:
         self.users: tp.Dict[str, User] = {}
-        self.dialogues: tp.Dict[str, Dialogue] = {}
+        self.users_ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+        self.out_messages: tp.Dict[str, tp.List[tp.Dict[str, str]]] = defaultdict(list)
 
-    async def create_user(self, user: User) -> User:
+    async def get_or_create_user(self, **kwargs: tp.Any) -> User:
+        """Get by outer_id or create user"""
+        if "outer_id" not in kwargs:
+            raise Exception("User without outer_id is illegal")
+        outer_id = kwargs["outer_id"]
+        if outer_id in self.users:
+            return self.users[outer_id]
+        else:
+            user = User(outer_id=outer_id,
+                        nickname=kwargs.get("nickname"),
+                        name=kwargs.get("name"),
+                        surname=kwargs.get("surname"),
+                        patronymic=kwargs.get("patronymic"),
+                        current_scenario_name=kwargs.get("current_scenario_name"),
+                        current_node_id=kwargs.get("current_node_id"),
+                        )
+            return user
+
+    async def update_user(self, user: User) -> User:
+        """Update user context"""
         self.users[user.outer_id] = user
-        return user
+        return self.users[user.outer_id]
 
-    async def get_user(self, user_id: str) -> User:
-        return self.users[user_id]
+    async def update_user_context(self, user: User, ctx_to_update: tp.Dict[str, str]) -> None:
+        """Update user fields"""
+        self.users_ctx[user.outer_id].update(ctx_to_update)
 
-    async def get_or_create_user(self, user: User) -> User:
-        try:
-            user_from_repo = await self.get_user(user.outer_id)
-        except KeyError:
-            user_from_repo = await self.create_user(user)
-        return user_from_repo
-
-    async def set_user_current_scenario(
-        self, user: User, scenario_name: str | None
-    ) -> None:
-        user_copy = copy.deepcopy(await self.get_user(user.outer_id))
-        user_copy.current_scenario_name = scenario_name
-        self.users[user.outer_id] = user_copy
-
-    async def set_user_current_node(self, user: User, node_id: str | None) -> None:
-        user_copy = copy.deepcopy(await self.get_user(user.outer_id))
-        user_copy.current_node_id = node_id
-        self.users[user.outer_id] = user_copy
-
-    async def create_dialogue_scenario(self, dialogue: Dialogue) -> Dialogue:
-        self.dialogues[dialogue.name] = dialogue
-        return dialogue
-
-    async def get_dialogue(self, dialogue_name: str) -> Dialogue:
-        return self.dialogues[dialogue_name]
+    async def get_user_context(self, user: User) -> tp.Dict[str, str]:
+        """Get user context"""
+        return self.users_ctx[user.outer_id]

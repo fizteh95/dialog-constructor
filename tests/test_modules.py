@@ -37,7 +37,10 @@ class FakeSender(Sender):
         self.stored_ctx = {}
 
     async def send(
-        self, event: OutEvent, history: tp.List[tp.Dict[str, str]], ctx: tp.Dict[str, tp.Dict[str, str]],
+        self,
+        event: OutEvent,
+        history: tp.List[tp.Dict[str, str]],
+        ctx: tp.Dict[str, tp.Dict[str, str]],
     ) -> str | None:
         """Send to outer service"""
         self.out_messages.append(event)
