@@ -1,8 +1,10 @@
 import typing as tp
-from collections import defaultdict
 
 import pytest
 
+from src.adapters.ep_wrapper import EPWrapper
+from src.adapters.repository import InMemoryRepo
+from src.adapters.sender_wrapper import SenderWrapper
 from src.domain.events import EventProcessor
 from src.domain.model import EditMessage
 from src.domain.model import Event
@@ -14,8 +16,6 @@ from src.domain.model import OutMessage
 from src.domain.model import Scenario
 from src.domain.model import SetVariable
 from src.domain.model import User
-from src.service_layer.context import InMemoryContext
-from src.service_layer.history import InMemoryHistory
 from src.service_layer.message_bus import ConcreteMessageBus
 from src.service_layer.sender import Sender
 
@@ -34,17 +34,14 @@ class FakeSender(Sender):
     def __init__(self, *args: tp.Any, **kwargs: tp.Any) -> None:
         super().__init__(*args, **kwargs)
         self.out_messages: tp.List[OutEvent] = []
-        self.stored_ctx = {}
 
     async def send(
         self,
         event: OutEvent,
         history: tp.List[tp.Dict[str, str]],
-        ctx: tp.Dict[str, tp.Dict[str, str]],
-    ) -> str | None:
+        ctx: tp.Dict[str, str],
+    ) -> str:
         """Send to outer service"""
-        self.out_messages.append(event)
-        self.stored_ctx = ctx
         return f"outer_{event.linked_node_id}"
 
 
@@ -58,10 +55,10 @@ async def test_message_bus() -> None:
     )
     test_scenario = Scenario("test", "id_1", {"id_1": in_node, "id_2": out_node})
 
-    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+    repo = InMemoryRepo()
 
     ep = EventProcessor([test_scenario], test_scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
 
     listener = FakeListener()
 
@@ -104,10 +101,10 @@ async def test_context_saving() -> None:
         "test", "id_1", {"id_1": in_node, "id_2": set_variable, "id_3": out_node}
     )
 
-    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+    repo = InMemoryRepo()
 
     ep = EventProcessor([test_scenario], test_scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
 
     listener = FakeListener()
 
@@ -120,10 +117,10 @@ async def test_context_saving() -> None:
 
     await bus.public_message(in_event)
 
-    assert len(wrapped_ep.users_ctx) == 1
-    assert "1" in wrapped_ep.users_ctx
-    assert "test_var1" in wrapped_ep.users_ctx["1"]
-    assert wrapped_ep.users_ctx["1"]["test_var1"] == "Hi!"
+    user_ctx = await repo.get_user_context(user)
+    assert len(user_ctx) == 1
+    assert "test_var1" in user_ctx
+    assert user_ctx["test_var1"] == "Hi!"
 
 
 @pytest.mark.asyncio
@@ -152,13 +149,13 @@ async def test_out_messages_saving() -> None:
         {"id_1": in_node, "id_2": out_node, "id_3": edit_node, "id_4": out_node2},
     )
 
-    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+    repo = InMemoryRepo()
 
     ep = EventProcessor([test_scenario], test_scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
 
     sender = FakeSender()
-    wrapped_sender = InMemoryHistory(sender=sender, users_ctx=ctx)
+    wrapped_sender = SenderWrapper(sender=sender, repo=repo)
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
@@ -169,11 +166,11 @@ async def test_out_messages_saving() -> None:
 
     await bus.public_message(in_event)
 
-    assert len(sender.out_messages) == 3
-    assert len(wrapped_sender.users_history["1"]) == 3
-    assert wrapped_sender.users_history["1"][0]["id_2"] == "outer_id_2"
-    assert wrapped_sender.users_history["1"][1]["id_3"] == "outer_id_3"
-    assert wrapped_sender.users_history["1"][2]["id_4"] == "outer_id_4"
+    history = await repo.get_user_history(user)
+    assert len(history) == 3
+    assert history[0]["id_2"] == "outer_id_2"
+    assert history[1]["id_3"] == "outer_id_3"
+    assert history[2]["id_4"] == "outer_id_4"
 
 
 @pytest.mark.asyncio
@@ -193,25 +190,112 @@ async def test_context_available_in_wrapped_sender() -> None:
         {"id_1": in_node, "id_2": out_node},
     )
 
-    ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
-    ctx["1"] = {"test_key": "test_value"}
+    repo = InMemoryRepo()
+    user = User(outer_id="1")
+    await repo.update_user_context(user, {"test_key": "test_value"})
 
     ep = EventProcessor([test_scenario], test_scenario.name)
-    wrapped_ep = InMemoryContext(event_processor=ep, users_ctx=ctx)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
 
     sender = FakeSender()
-    wrapped_sender = InMemoryHistory(sender=sender, users_ctx=ctx)
+    wrapped_sender = SenderWrapper(sender=sender, repo=repo)
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
     bus.register(wrapped_sender)
 
-    user = User(outer_id="1")
     in_event = InEvent(user=user, text="Hi!")
 
     await bus.public_message(in_event)
 
-    assert len(sender.stored_ctx) == 1
-    assert "1" in sender.stored_ctx
-    assert len(sender.stored_ctx["1"]) == 1
-    assert sender.stored_ctx["1"]["test_key"] == "test_value"
+    user_ctx = await repo.get_user_context(user)
+    assert len(user_ctx) == 1
+    assert user_ctx["test_key"] == "test_value"
+
+
+@pytest.mark.asyncio
+async def test_in_memory_repo_user() -> None:
+    repo = InMemoryRepo()
+
+    with pytest.raises(Exception) as e:
+        await repo.get_or_create_user(name="Test user")
+    assert str(e.value) == "User without outer_id is illegal"
+
+    created_user = await repo.get_or_create_user(outer_id="1")
+    assert isinstance(created_user, User)
+    assert created_user.outer_id == "1"
+    same_user = await repo.get_or_create_user(outer_id="1")
+    assert created_user.outer_id == same_user.outer_id
+    assert created_user.name == same_user.name
+    assert created_user == same_user
+
+    created_user2 = await repo.get_or_create_user(outer_id="2", name="Tester")
+    assert isinstance(created_user2, User)
+    assert created_user2.outer_id == "2"
+    same_user2 = await repo.get_or_create_user(outer_id="2")
+    assert same_user2.name == "Tester"
+
+    created_user.name = "Test_name"
+    await repo.update_user(created_user)
+    user_from_repo = await repo.get_or_create_user(outer_id=created_user.outer_id)
+    assert user_from_repo.name == "Test_name"
+
+
+@pytest.mark.asyncio
+async def test_in_memory_repo_context() -> None:
+    repo = InMemoryRepo()
+
+    user = User(outer_id="1")
+    user_ctx = await repo.get_user_context(user)
+    assert isinstance(user_ctx, tp.Dict)
+    assert user_ctx == {}
+
+    ctx_to_update = {"test_key": "test_value", "key_to_update": "value_to_update"}
+    await repo.update_user_context(user, ctx_to_update)
+    user_ctx = await repo.get_user_context(user)
+    assert len(user_ctx) == 2
+    assert "test_key" in user_ctx and "key_to_update" in user_ctx
+    assert (
+        user_ctx["test_key"] == "test_value"
+        and user_ctx["key_to_update"] == "value_to_update"
+    )
+
+    new_ctx = {"key_to_update": "updated_value"}
+    await repo.update_user_context(user, new_ctx)
+    user_ctx = await repo.get_user_context(user)
+    assert len(user_ctx) == 2
+    assert "test_key" in user_ctx and "key_to_update" in user_ctx
+    assert (
+        user_ctx["test_key"] == "test_value"
+        and user_ctx["key_to_update"] == "updated_value"
+    )
+
+
+@pytest.mark.asyncio
+async def test_in_memory_repo_out_message_history() -> None:
+    repo = InMemoryRepo()
+    user = User(outer_id="1")
+
+    old_history = await repo.get_user_history(user)
+    assert isinstance(old_history, tp.List)
+    assert len(old_history) == 0
+
+    await repo.add_to_user_history(user, {"id_1": "100500"})
+    history = await repo.get_user_history(user)
+    assert len(history) == 1
+    assert isinstance(history[0], tp.Dict)
+    assert len(history[0]) == 1
+    assert "id_1" in history[0]
+    assert history[0]["id_1"] == "100500"
+
+    await repo.add_to_user_history(user, {"id_2": "100501"})
+    history = await repo.get_user_history(user)
+    assert len(history) == 2
+    assert isinstance(history[0], tp.Dict)
+    assert len(history[0]) == 1
+    assert "id_1" in history[0]
+    assert history[0]["id_1"] == "100500"
+    assert isinstance(history[1], tp.Dict)
+    assert len(history[1]) == 1
+    assert "id_2" in history[1]
+    assert history[1]["id_2"] == "100501"

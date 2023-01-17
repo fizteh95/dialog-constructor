@@ -31,8 +31,8 @@ class Sender(ABC):
         self,
         event: OutEvent,
         history: tp.List[tp.Dict[str, str]],
-        ctx: tp.Dict[str, tp.Dict[str, str]],
-    ) -> str | None:
+        ctx: tp.Dict[str, str],
+    ) -> str:
         """Send to outer service"""
 
 
@@ -54,7 +54,7 @@ class TgSender(Sender):
     async def get_keyboard(
         self,
         event: OutEvent,
-        ctx: tp.Dict[str, tp.Dict[str, str]],
+        ctx: tp.Dict[str, str],
     ) -> None | aiogram.types.InlineKeyboardMarkup:
         keyboard = None
         if event.buttons is not None:
@@ -62,25 +62,23 @@ class TgSender(Sender):
             for button in event.buttons:
                 keyboard.row(
                     aiogram.types.InlineKeyboardButton(
-                        text=self.prepare_text(event.user.outer_id, button.text, ctx),
+                        text=self.prepare_text(button.text, ctx),
                         callback_data=button.callback_data,
                     )
                 )
         return keyboard
 
-    def prepare_text(
-        self, user_outer_id: str, text: str, ctx: tp.Dict[str, tp.Dict[str, str]]
-    ) -> str:
+    @staticmethod
+    def prepare_text(text: str, ctx: tp.Dict[str, str]) -> str:
         # TODO: move to RE
-        current_ctx = ctx[user_outer_id]
         if text in texts:
             new_text = texts[text]
             if "$" in new_text:
                 splits = new_text.split("$")
                 new_text = ""
                 for s in splits:
-                    if s in current_ctx:
-                        new_text += str(current_ctx[s])
+                    if s in ctx:
+                        new_text += str(ctx[s])
                     else:
                         new_text += s
             return new_text
@@ -90,8 +88,8 @@ class TgSender(Sender):
         self,
         event: OutEvent,
         history: tp.List[tp.Dict[str, str]],
-        ctx: tp.Dict[str, tp.Dict[str, str]],
-    ) -> str | None:
+        ctx: tp.Dict[str, str],
+    ) -> str:
         """Send to outer service"""
         print("send message")
         if event.node_to_edit:
@@ -101,7 +99,7 @@ class TgSender(Sender):
             )
             res = await self.bot.edit_message_text(
                 chat_id=event.user.outer_id,
-                text=self.prepare_text(event.user.outer_id, event.text, ctx),
+                text=self.prepare_text(event.text, ctx),
                 message_id=message_id_to_edit,
                 reply_markup=keyboard,
             )
@@ -109,7 +107,7 @@ class TgSender(Sender):
             keyboard = await self.get_keyboard(event, ctx)
             res = await self.bot.send_message(
                 chat_id=event.user.outer_id,
-                text=self.prepare_text(event.user.outer_id, event.text, ctx),
+                text=self.prepare_text(event.text, ctx),
                 reply_markup=keyboard,
             )
         await asyncio.sleep(1)

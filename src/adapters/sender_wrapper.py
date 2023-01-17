@@ -3,19 +3,18 @@ from abc import ABC
 from abc import abstractmethod
 from collections import defaultdict
 
+from src.adapters.repository import AbstractRepo
 from src.domain.model import Event
 from src.domain.model import OutEvent
 from src.service_layer.sender import Sender
 
 
-class HistoryWrapper(ABC):
+class AbstractSenderWrapper(ABC):
     """Хранит в себе историю отправленных сообщений пользователю"""
 
-    def __init__(
-        self, sender: Sender, users_ctx: tp.Dict[str, tp.Dict[str, str]]
-    ) -> None:
+    def __init__(self, sender: Sender, repo: AbstractRepo) -> None:
         self.sender = sender
-        self.users_ctx = users_ctx
+        self.repo = repo
 
     @abstractmethod
     async def process_event(self, event: Event) -> None:
@@ -26,24 +25,24 @@ class HistoryWrapper(ABC):
         """Интерфейс для взаимодействия с шиной"""
 
 
-class InMemoryHistory(HistoryWrapper):
+class SenderWrapper(AbstractSenderWrapper):
     def __init__(
-        self, sender: Sender, users_ctx: tp.Dict[str, tp.Dict[str, str]]
+        self,
+        sender: Sender,
+        repo: AbstractRepo,
     ) -> None:
-        super().__init__(sender=sender, users_ctx=users_ctx)
-        self.users_history: tp.Dict[str, tp.List[tp.Dict[str, str]]] = defaultdict(
-            list
-        )  # {user_outer_id : [{node_id: outer_id}, {...}, ...]}
+        super().__init__(sender=sender, repo=repo)
 
     async def process_event(self, event: Event) -> None:
         """Подмешивает историю для изменения сообщений"""
         if isinstance(event, OutEvent):
-            history = self.users_history[event.user.outer_id]
+            history = await self.repo.get_user_history(event.user)
+            user_ctx = await self.repo.get_user_context(event.user)
             outer_message_id = await self.sender.send(
-                event=event, history=history, ctx=self.users_ctx
+                event=event, history=history, ctx=user_ctx
             )
-            self.users_history[event.user.outer_id].append(
-                {event.linked_node_id: outer_message_id}
+            await self.repo.add_to_user_history(
+                event.user, {event.linked_node_id: outer_message_id}
             )
 
     async def handle_message(self, message: Event) -> tp.List[Event]:
