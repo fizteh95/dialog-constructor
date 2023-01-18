@@ -1,7 +1,6 @@
 import typing as tp
 from abc import ABC
 from abc import abstractmethod
-from collections import defaultdict
 
 from src.adapters.repository import AbstractRepo
 from src.domain.model import Event

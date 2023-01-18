@@ -4,10 +4,8 @@ from abc import abstractmethod
 
 import aiogram
 
-from src.adapters.repository import AbstractRepo
 from src.domain.model import InEvent
 from src.domain.model import User
-from src.service_layer.message_bus import MessageBus
 
 
 class Poller(ABC):
