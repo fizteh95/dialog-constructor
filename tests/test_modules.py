@@ -3,6 +3,7 @@ import typing as tp
 import pytest
 
 from src.adapters.ep_wrapper import EPWrapper
+from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
 from src.domain.events import EventProcessor
@@ -16,6 +17,7 @@ from src.domain.model import OutMessage
 from src.domain.model import Scenario
 from src.domain.model import SetVariable
 from src.domain.model import User
+from src.entrypoints.poller import Poller
 from src.service_layer.message_bus import ConcreteMessageBus
 from src.service_layer.sender import Sender
 
@@ -43,6 +45,24 @@ class FakeSender(Sender):
     ) -> str:
         """Send to outer service"""
         return f"outer_{event.linked_node_id}"
+
+
+class FakePoller(Poller):
+    def __init__(
+        self,
+        message_handler: tp.Callable[[InEvent], tp.Awaitable[None]],
+        user_finder: tp.Callable[[tp.Dict[str, str]], tp.Awaitable[User]],
+    ) -> None:
+        super().__init__(message_handler=message_handler, user_finder=user_finder)
+
+    async def poll(self) -> tp.AsyncIterator[InEvent]:  # type: ignore
+        user = await self.user_finder(
+            dict(
+                outer_id="1",
+            )
+        )
+        message = InEvent(user=user, text="Test text")
+        await self.message_handler(message)
 
 
 @pytest.mark.asyncio
@@ -299,3 +319,58 @@ async def test_in_memory_repo_out_message_history() -> None:
     assert len(history[1]) == 1
     assert "id_2" in history[1]
     assert history[1]["id_2"] == "100501"
+
+
+@pytest.mark.asyncio
+async def test_poller_adapter() -> None:
+    in_node = InMessage(
+        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=["id_3"],
+        node_type=NodeType.outMessage,
+    )
+    in_node2 = InMessage(
+        element_id="id_1", value="", next_ids=["id_4"], node_type=NodeType.inMessage
+    )
+    out_node2 = OutMessage(
+        element_id="id_4", value="TEXT2", next_ids=[], node_type=NodeType.outMessage
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node, "id_3": in_node2, "id_4": out_node2},
+    )
+
+    repo = InMemoryRepo()
+
+    ep = EventProcessor([test_scenario], test_scenario.name)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+
+    sender = FakeListener()
+
+    bus = ConcreteMessageBus()
+    bus.register(wrapped_ep)
+    bus.register(sender)
+
+    poller_adapter = PollerAdapter(bus=bus, repo=repo)
+    poller = FakePoller(
+        message_handler=poller_adapter.message_handler,
+        user_finder=poller_adapter.user_finder,
+    )
+
+    await poller.poll()
+    assert len(sender.events) == 2
+    assert isinstance(sender.events[0], InEvent)
+    assert sender.events[0].text == "Test text"
+    assert isinstance(sender.events[1], OutEvent)
+    assert sender.events[1].text == "TEXT1"
+
+    await poller.poll()
+    assert len(sender.events) == 4
+    assert isinstance(sender.events[2], InEvent)
+    assert sender.events[2].text == "Test text"
+    assert isinstance(sender.events[3], OutEvent)
+    assert sender.events[3].text == "TEXT1"

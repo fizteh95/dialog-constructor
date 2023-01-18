@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot
 
 from src.adapters.ep_wrapper import EPWrapper
+from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
 from src.dialogues.scenario_loader import XMLParser
@@ -34,9 +35,12 @@ async def main() -> None:
     bus.register(wrapped_ep)
     bus.register(wrapped_sender)
 
-    # TODO:
-
-    poller = TgPoller(bus=bus, repo=repo, bot=bot)
+    poller_adapter = PollerAdapter(bus=bus, repo=repo)
+    poller = TgPoller(
+        message_handler=poller_adapter.message_handler,
+        user_finder=poller_adapter.user_finder,
+        bot=bot,
+    )
 
     await poller.poll()
 
