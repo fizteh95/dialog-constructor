@@ -94,9 +94,13 @@ class EventProcessor:
                 next_nodes = [node_from_last_iteration]
             else:
                 if executed_node.node_type == NodeType.editMessage:
-                    next_nodes = [current_scenario.get_node_by_id(executed_node.next_ids[1])]
+                    next_nodes = [
+                        current_scenario.get_node_by_id(executed_node.next_ids[1])
+                    ]
                 else:
-                    next_nodes = self.get_next(current_scenario, current_node=executed_node)
+                    next_nodes = self.get_next(
+                        current_scenario, current_node=executed_node
+                    )
                 # DEBUG
                 if start_event and start_event.button_pushed_next:
                     print("tp0")

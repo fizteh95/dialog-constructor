@@ -3,7 +3,6 @@ from enum import Enum
 
 from src.domain.model import ExecuteNode
 
-
 # from src.dialogues.scenario_loader import NodeType
 
 # from src.executor.domain import NodeType
