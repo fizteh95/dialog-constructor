@@ -48,7 +48,7 @@ class Button:
 class OutEvent(Event):
     user: User
     text: str
-    linked_node_id: tp.Optional[str] = None
+    linked_node_id: str
     buttons: tp.Optional[tp.List[Button]] = None
     node_to_edit: tp.Optional[str] = None
     ...
