@@ -10,9 +10,10 @@ from src.service_layer.message_bus import MessageBus
 
 
 class Poller(ABC):
-    def __init__(self, callback: tp.Callable[[InEvent], None]) -> None:
+    def __init__(self, bus: MessageBus, repo: AbstractRepo) -> None:  # callback: tp.Callable[[InEvent], None]
         """Initialize of entrypoints"""
-        self.callback = callback
+        self.bus = bus
+        self.repo = repo
 
     @abstractmethod
     async def poll(self) -> None:
@@ -20,9 +21,9 @@ class Poller(ABC):
 
 
 class TgPoller(Poller):
-    def __init__(self, callback: tp.Callable[[InEvent], None], bot: aiogram.Bot) -> None:
+    def __init__(self, bus: MessageBus, repo: AbstractRepo, bot: aiogram.Bot) -> None:  # callback: tp.Callable[[InEvent], None]
         """Initialize of entrypoints"""
-        super().__init__(callback)
+        super().__init__(bus, repo)
         self.bot = bot
         self.dp = aiogram.Dispatcher(self.bot)
         self.dp.register_message_handler(self.process_message)
