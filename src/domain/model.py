@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 import typing as tp
@@ -87,6 +89,28 @@ class ExecuteNode(ABC):
         :return: тапл из списков исходящих событий, обновления контекста и текст для дальнейшей обработки
         """
 
+    def to_dict(
+        self,
+    ) -> tp.Dict[str, tp.Union[str, tp.List[str], tp.List[tp.Tuple[str, str]], None]]:
+        return dict(
+            element_id=self.element_id,
+            next_ids=self.next_ids,
+            value=self.value,
+            node_type=self.node_type.value,
+            buttons=self.buttons,
+        )
+
+    @classmethod
+    def from_dict(cls, kwargs_dict: tp.Dict[str, tp.Any]) -> ExecuteNode:
+        """Create node from json"""
+        return cls(
+            element_id=kwargs_dict["element_id"],
+            next_ids=kwargs_dict["next_ids"],
+            value=kwargs_dict["value"],
+            node_type=NodeType(kwargs_dict["node_type"]),
+            buttons=[tuple(x) for x in kwargs_dict["buttons"]] if kwargs_dict["buttons"] is not None else None,  # type: ignore
+        )
+
 
 class InMessage(ExecuteNode):
     async def execute(
@@ -114,6 +138,8 @@ class EditMessage(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str], str]:
+        if self.next_ids is None:
+            raise Exception("EditMessage node need next_ids field")
         out_event = OutEvent(
             user=user,
             text=self.value,
@@ -205,3 +231,12 @@ class Scenario:
 
     def get_node_by_id(self, node_id: str) -> ExecuteNode:
         return self.nodes[node_id]
+
+    def to_dict(
+        self,
+    ) -> tp.Dict[str, tp.Union[str, tp.List[tp.Any]]]:  # TODO: right typing
+        ...
+
+    @classmethod
+    def from_dict(cls, kwargs_dict: tp.Dict[str, tp.Any]) -> Scenario:
+        ...

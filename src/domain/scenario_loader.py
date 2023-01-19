@@ -6,8 +6,6 @@ from abc import ABC
 from abc import abstractmethod
 from collections import defaultdict
 
-from src.dialogues.domain import Dialogue
-from src.domain.model import Button
 from src.domain.model import DataExtract
 from src.domain.model import EditMessage
 from src.domain.model import ExecuteNode
@@ -67,9 +65,7 @@ class XMLParser(Parser):
                 target_id = n.get("target")
                 if source_id and target_id:
                     arrows[source_id].append(target_id)
-        # for k, v in arrows.items():
-        #     print(f"{k} -> {v}")
-        # raise
+
         # поиск всех блоков нод (кроме btnArray)
         for n in nodes:
             xml_value = n.get("value")
@@ -81,8 +77,8 @@ class XMLParser(Parser):
                     print(f"unknown NodeType, {xml_value}")
                     continue
                 node_value = self._get_template(xml_value)
-                # if not node_value:
-                #     continue
+                if node_value is None:
+                    node_value = ""
                 element_id = n.get("id")
                 if not element_id:
                     print("node has no element id")
@@ -106,12 +102,6 @@ class XMLParser(Parser):
                     next_ids=next_nodes,
                     value=node_value,
                 )
-
-                # dialogue_node = ExecuteNode(
-                #     element_id=element_id, node_type=node_type, value=node_value
-                # )
-                # next_nodes = arrows.get(dialogue_node.element_id)
-                # dialogue_node.add_next(next_nodes)
                 result[dialogue_node.element_id] = dialogue_node
         # присоединение кнопок к целевым блокам
         for n in nodes:
@@ -136,7 +126,6 @@ class XMLParser(Parser):
                     if not next_node_ids:
                         print("button must have any child")
                         raise
-                    # button = Button(text=text, callback_data=",".join(next_node_ids))
                     buttons.append((text, ",".join(next_node_ids)))
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
@@ -146,20 +135,13 @@ class XMLParser(Parser):
 
 
 def main() -> None:
-    xml_src_path = "../../src/resources/weather-demo.xml"
+    xml_src_path = "../resources/weather-demo.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
-    dialogue = Dialogue(root_id=root_id, name="Test scenario", nodes=nodes)
-    # print(root_id)
-    # print(dialogue)
-    print(dialogue)
+    print(len(nodes))
+    for n in nodes:
+        print(n)
 
-
-"""
-H9drS6L4HsgGu72-MB-w-10, NodeType.editMessage, TEXT10, ['H9drS6L4HsgGu72-MB-w-16', 'H9drS6L4HsgGu72-MB-w-0']
-H9drS6L4HsgGu72-MB-w-16, NodeType.outMessage, TEXT11, None
-7HfLZjwwzprmSE3nwxrW-0, NodeType.logicalUnit, NOT, ['7HfLZjwwzprmSE3nwxrW-30', '7HfLZjwwzprmSE3nwxrW-33']
-"""
 
 if __name__ == "__main__":
     main()

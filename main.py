@@ -6,9 +6,9 @@ from src.adapters.ep_wrapper import EPWrapper
 from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
-from src.dialogues.scenario_loader import XMLParser
 from src.domain.events import EventProcessor
 from src.domain.model import Scenario
+from src.domain.scenario_loader import XMLParser
 from src.entrypoints.poller import TgPoller
 from src.service_layer.message_bus import ConcreteMessageBus
 from src.service_layer.sender import TgSender

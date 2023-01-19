@@ -374,3 +374,22 @@ async def test_poller_adapter() -> None:
     assert sender.events[2].text == "Test text"
     assert isinstance(sender.events[3], OutEvent)
     assert sender.events[3].text == "TEXT1"
+
+
+@pytest.mark.asyncio
+async def test_nodes_to_dict() -> None:
+    test_node = OutMessage(
+        element_id="id_1",
+        value="TEXT1",
+        next_ids=["id_2"],
+        node_type=NodeType.outMessage,
+    )
+    res = test_node.to_dict()
+    assert res
+
+    recreated_node = OutMessage.from_dict(res)
+    assert isinstance(recreated_node, OutMessage)
+    assert recreated_node.element_id == test_node.element_id
+    assert recreated_node.value == test_node.value
+    assert recreated_node.next_ids == test_node.next_ids
+    assert recreated_node.node_type == test_node.node_type
