@@ -228,15 +228,40 @@ class Scenario:
     name: str
     root_id: str
     nodes: tp.Dict[str, ExecuteNode]
+    intent_names: tp.List[str] | None = None
 
     def get_node_by_id(self, node_id: str) -> ExecuteNode:
         return self.nodes[node_id]
 
     def to_dict(
         self,
-    ) -> tp.Dict[str, tp.Union[str, tp.List[tp.Any]]]:  # TODO: right typing
-        ...
+    ) -> tp.Dict[str, tp.Union[str, tp.Dict[str, tp.Any]]]:  # TODO: right typing
+        return dict(
+            name=self.name,
+            root_id=self.root_id,
+            nodes={k: v.to_dict() for k, v in self.nodes.items()},
+            intent_names=self.intent_names,
+        )
 
     @classmethod
     def from_dict(cls, kwargs_dict: tp.Dict[str, tp.Any]) -> Scenario:
-        ...
+        nodes: tp.Dict[str, ExecuteNode] = {}
+        class_dict = {
+            "inMessage": InMessage,
+            "outMessage": OutMessage,
+            "editMessage": EditMessage,
+            "remoteRequest": RemoteRequest,
+            "dataExtract": DataExtract,
+            "setVariable": SetVariable,
+            "logicalUnit": LogicalUnit,
+        }
+        for k, v in kwargs_dict["nodes"].items():
+            need_class = class_dict[v["node_type"]]
+            dialogue_node = need_class.from_dict(v)
+            nodes[k] = dialogue_node
+        return cls(
+            name=kwargs_dict["name"],
+            root_id=kwargs_dict["root_id"],
+            nodes=nodes,
+            intent_names=kwargs_dict["intent_names"]
+        )

@@ -12,6 +12,7 @@ from src.domain.model import User
 class EventProcessor:
     """
     Превращает входящие события в исходящие по сценарию
+    По интентам - неинтентам:
     """
 
     def __init__(

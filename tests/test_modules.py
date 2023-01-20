@@ -393,3 +393,57 @@ async def test_nodes_to_dict() -> None:
     assert recreated_node.value == test_node.value
     assert recreated_node.next_ids == test_node.next_ids
     assert recreated_node.node_type == test_node.node_type
+
+
+@pytest.mark.asyncio
+async def test_scenario_to_dict() -> None:
+    in_node = InMessage(
+        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node},
+        "test_intent"
+    )
+
+    res = test_scenario.to_dict()
+    assert res
+
+    recreated_scenario = Scenario.from_dict(res)
+    assert isinstance(recreated_scenario, Scenario)
+    assert recreated_scenario.name == test_scenario.name
+    assert recreated_scenario.root_id == test_scenario.root_id
+    assert recreated_scenario.intent_names == test_scenario.intent_names
+    assert len(recreated_scenario.nodes) == len(test_scenario.nodes)
+    assert (
+        recreated_scenario.nodes["id_1"].element_id
+        == test_scenario.nodes["id_1"].element_id
+    )
+    assert (
+        recreated_scenario.nodes["id_1"].next_ids
+        == test_scenario.nodes["id_1"].next_ids
+    )
+    assert (
+        recreated_scenario.nodes["id_1"].node_type
+        == test_scenario.nodes["id_1"].node_type
+    )
+    assert (
+        recreated_scenario.nodes["id_2"].element_id
+        == test_scenario.nodes["id_2"].element_id
+    )
+    assert (
+        recreated_scenario.nodes["id_2"].next_ids
+        == test_scenario.nodes["id_2"].next_ids
+    )
+    assert (
+        recreated_scenario.nodes["id_2"].node_type
+        == test_scenario.nodes["id_2"].node_type
+    )
+    assert recreated_scenario.nodes["id_2"].value == test_scenario.nodes["id_2"].value
