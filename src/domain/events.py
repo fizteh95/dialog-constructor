@@ -1,10 +1,11 @@
 import copy
 import typing as tp
 
-from src.domain.model import Event, OutEvent
+from src.domain.model import Event
 from src.domain.model import ExecuteNode
 from src.domain.model import InEvent
 from src.domain.model import NodeType
+from src.domain.model import OutEvent
 from src.domain.model import Scenario
 from src.domain.model import User
 
@@ -102,7 +103,7 @@ class EventProcessor:
 
     async def process_event(
         self, event: InEvent, ctx: tp.Dict[str, str]
-    ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str]]:
+    ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str]]:
         """
         Ветвление исполнения только в логических блоках, иначе только один потомок
         То есть без учета логических блоков и изменения сообщений должен быть только один потомок
@@ -134,11 +135,13 @@ class EventProcessor:
                     )
                     if nodes_id:
                         current_scenario = scenario
+                        user.current_scenario_name = current_scenario.name
                         break
             else:
                 current_scenario = await self.scenario_getter(
                     self.default_scenario_name
                 )
+                user.current_scenario_name = current_scenario.name
                 current_node = current_scenario.get_node_by_id(current_scenario.root_id)
                 nodes_id = current_node.next_ids
         if not nodes_id:
@@ -147,25 +150,59 @@ class EventProcessor:
 
         # текущий сценарий и последующие айдишники нод мы нашли
         # current_scenario - текущий сценарий, nodes_id - айдишники следующих нод
-
-        # # MOCK
-        # for item in nodes_id:
-        #     next_node = current_scenario.get_node_by_id(item)
-        #     output, _, _ = await next_node.execute(user, {}, event.text)
-        #     break
-        # # END_MOCK
-
         if len(nodes_id) != 1:
             raise Exception("Only one child must be from regular node")
         current_node = current_scenario.get_node_by_id(nodes_id[0])
+
         # идем по сценарию пока не встретим спец блоки
         output: tp.List[OutEvent] = []
-        if current_node.node_type in (NodeType.outMessage, NodeType.setVariable, NodeType.remoteRequest, NodeType.dataExtract):
-            out_events, update_ctx, out_text = await current_node.execute(user, ctx, event.text)
+
+        if current_node.node_type in (
+            NodeType.outMessage,
+            NodeType.setVariable,
+            NodeType.remoteRequest,
+            NodeType.dataExtract,
+        ):
+            out_events, update_ctx, out_text = await current_node.execute(
+                user, ctx, event.text
+            )
             output += out_events
             ctx.update(update_ctx)
 
+        if current_node.next_ids is None:
+            raise Exception("Only one child must be from regular node")
+        if len(current_node.next_ids) > 1:
+            raise Exception("Only one child must be from regular node")
+        if len(current_node.next_ids) == 0:
+            user.current_node_id = None
+            user.current_scenario_name = None
+            return output, ctx
 
+        for _ in range(15):
+            current_node = current_scenario.get_node_by_id(current_node.next_ids[0])
+            if current_node.node_type in (
+                NodeType.outMessage,
+                NodeType.setVariable,
+                NodeType.remoteRequest,
+                NodeType.dataExtract,
+            ):
+                out_events, update_ctx, out_text = await current_node.execute(
+                    user, ctx, event.text
+                )
+                output += out_events
+                ctx.update(update_ctx)
+            elif current_node.node_type == NodeType.inMessage:
+                user.current_node_id = current_node.element_id
+                return output, ctx
+
+            if current_node.next_ids is None:
+                raise Exception("Only one child must be from regular node")
+            if len(current_node.next_ids) > 1:
+                raise Exception("Only one child must be from regular node")
+            if len(current_node.next_ids) == 0:
+                user.current_node_id = None
+                user.current_scenario_name = None
+                return output, ctx
 
         return output, {}
 
@@ -173,7 +210,7 @@ class EventProcessor:
         self, event: Event, ctx: tp.Dict[str, str]
     ) -> tp.Tuple[tp.List[Event], tp.Dict[str, str]]:
         if isinstance(event, InEvent):
-            return await self.process_event(event=event, ctx=ctx)
+            return await self.process_event(event=event, ctx=ctx)  # type: ignore
         return [], ctx
 
     # @staticmethod
