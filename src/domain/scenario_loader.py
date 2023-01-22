@@ -15,6 +15,7 @@ from src.domain.model import NodeType
 from src.domain.model import OutMessage
 from src.domain.model import RemoteRequest
 from src.domain.model import SetVariable
+from src.domain.model import class_dict
 
 
 class Parser(ABC):
@@ -86,15 +87,6 @@ class XMLParser(Parser):
 
                 next_nodes = arrows.get(element_id)
 
-                class_dict = {
-                    "inMessage": InMessage,
-                    "outMessage": OutMessage,
-                    "editMessage": EditMessage,
-                    "remoteRequest": RemoteRequest,
-                    "dataExtract": DataExtract,
-                    "setVariable": SetVariable,
-                    "logicalUnit": LogicalUnit,
-                }
                 need_class = class_dict[node_type.value]
                 dialogue_node = need_class(
                     element_id=element_id,
