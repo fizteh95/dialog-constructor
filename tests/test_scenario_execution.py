@@ -672,423 +672,455 @@ async def test_in_out_in_out(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name is None
 
 
-# @pytest.mark.asyncio
-# async def test_in_out_buttons_out() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     buttons = [("TEXT1_1", "id_98"), ("TEXT1_2", "id_99")]
-#     out_node = OutMessage(
-#         element_id="id_2",
-#         value="TEXT1",
-#         next_ids=["id_3"],
-#         node_type=NodeType.outMessage,
-#         buttons=buttons,
-#     )
-#     out_node2 = OutMessage(
-#         element_id="id_3", value="TEXT2", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     test_scenario = Scenario(
-#         "test", "id_1", {"id_1": in_node, "id_2": out_node, "id_3": out_node2}
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#     in_event = InEvent(user=user, text="Hi!")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 2
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].buttons is not None
-#     assert isinstance(out_events[1], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert out_events[1].text == "TEXT2"
-#     assert user.current_node_id == "id_2"
-#     assert user.current_scenario_name == "test"
-#
-#
-# @pytest.mark.asyncio
-# async def test_in_out_buttons_out_in() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     buttons = [("TEXT1_1", "id_98"), ("TEXT1_2", "id_99")]
-#     out_node = OutMessage(
-#         element_id="id_2",
-#         value="TEXT1",
-#         next_ids=["id_3"],
-#         node_type=NodeType.outMessage,
-#         buttons=buttons,
-#     )
-#     out_node2 = OutMessage(
-#         element_id="id_3",
-#         value="TEXT2",
-#         next_ids=["id_4"],
-#         node_type=NodeType.outMessage,
-#     )
-#     in_node2 = InMessage(
-#         element_id="id_4", value="", next_ids=[], node_type=NodeType.inMessage
-#     )
-#     test_scenario = Scenario(
-#         "test",
-#         "id_1",
-#         {"id_1": in_node, "id_2": out_node, "id_3": out_node2, "id_4": in_node2},
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#     in_event = InEvent(user=user, text="Hi!")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 2
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].buttons is not None
-#     assert isinstance(out_events[1], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert out_events[1].text == "TEXT2"
-#     assert user.current_node_id == "id_4"
-#     assert user.current_scenario_name == "test"
-#
-#
-# @pytest.mark.asyncio
-# async def test_in_out_buttons_in_button_out() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     buttons = [("TEXT1_1", "id_3"), ("TEXT1_2", "id_4")]
-#     out_node = OutMessage(
-#         element_id="id_2",
-#         value="TEXT1",
-#         next_ids=[],
-#         node_type=NodeType.outMessage,
-#         buttons=buttons,
-#     )
-#     out_node2 = OutMessage(
-#         element_id="id_3",
-#         value="TEXT2",
-#         next_ids=[],
-#         node_type=NodeType.outMessage,
-#     )
-#     out_node3 = OutMessage(
-#         element_id="id_4",
-#         value="TEXT3",
-#         next_ids=[],
-#         node_type=NodeType.outMessage,
-#     )
-#     test_scenario = Scenario(
-#         "test",
-#         "id_1",
-#         {"id_1": in_node, "id_2": out_node, "id_3": out_node2, "id_4": out_node3},
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#
-#     in_event = InEvent(user=user, text="Hi!")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert out_events[0].buttons is not None
-#     assert len(out_events[0].buttons) == 2
-#     assert out_events[0].buttons[0].text == "TEXT1_1"
-#     assert out_events[0].buttons[0].callback_data == "id_3"
-#     assert out_events[0].buttons[1].text == "TEXT1_2"
-#     assert out_events[0].buttons[1].callback_data == "id_4"
-#     assert user.current_node_id == "id_2"
-#     assert user.current_scenario_name == "test"
-#
-#     in_event2 = InEvent(user=user, button_pushed_next="id_3")
-#     out_events, new_ctx = await ep.process_event(in_event2, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT2"
-#     assert out_events[0].buttons is None
-#     assert user.current_node_id is None
-#     assert user.current_scenario_name is None
-#
-#
-# @pytest.mark.asyncio
-# async def test_double_click() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     buttons = [("TEXT1_1", "id_3")]
-#     out_node = OutMessage(
-#         element_id="id_2",
-#         value="TEXT1",
-#         next_ids=[],
-#         node_type=NodeType.outMessage,
-#         buttons=buttons,
-#     )
-#     buttons2 = [("TEXT2_1", "id_4")]
-#     out_node2 = OutMessage(
-#         element_id="id_3",
-#         value="TEXT2",
-#         next_ids=[],
-#         node_type=NodeType.outMessage,
-#         buttons=buttons2,
-#     )
-#     out_node3 = OutMessage(
-#         element_id="id_4",
-#         value="TEXT3",
-#         next_ids=[],
-#         node_type=NodeType.outMessage,
-#     )
-#     test_scenario = Scenario(
-#         "test",
-#         "id_1",
-#         {"id_1": in_node, "id_2": out_node, "id_3": out_node2, "id_4": out_node3},
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#
-#     in_event = InEvent(user=user, text="Hi!")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert out_events[0].buttons is not None
-#     assert len(out_events[0].buttons) == 1
-#     assert out_events[0].buttons[0].text == "TEXT1_1"
-#     assert out_events[0].buttons[0].callback_data == "id_3"
-#     assert user.current_node_id == "id_2"
-#     assert user.current_scenario_name == "test"
-#
-#     in_event2 = InEvent(user=user, button_pushed_next="id_3")
-#     out_events, new_ctx = await ep.process_event(in_event2, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT2"
-#     assert out_events[0].buttons is not None
-#     assert len(out_events[0].buttons) == 1
-#     assert out_events[0].buttons[0].text == "TEXT2_1"
-#     assert out_events[0].buttons[0].callback_data == "id_4"
-#     assert user.current_node_id == "id_3"
-#     assert user.current_scenario_name == "test"
-#
-#     in_event3 = InEvent(user=user, button_pushed_next="id_4")
-#     out_events, new_ctx = await ep.process_event(in_event3, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT3"
-#     assert out_events[0].buttons is None
-#     assert user.current_node_id is None
-#     assert user.current_scenario_name is None
-#
-#
-# @pytest.mark.asyncio
-# async def test_re_data_extract() -> None:
-#     user = User(outer_id="1")
-#     ctx: tp.Dict[str, str] = {}
-#     extract_node = DataExtract(
-#         element_id="id_1",
-#         next_ids=[],
-#         node_type=NodeType.dataExtract,
-#         value="re(^[-]?((180$)|(((1[0-7]\d)|([1-9]\d?))$)))",
-#     )  # выделяет числа от -180 до +180
-#     events, new_ctx, text_to_pipeline = await extract_node.execute(user, ctx, "180")
-#     assert events == []
-#     assert new_ctx == {}
-#     assert text_to_pipeline == "180"
-#     events, new_ctx, text_to_pipeline = await extract_node.execute(user, ctx, "900")
-#     assert events == []
-#     assert new_ctx == {}
-#     assert text_to_pipeline == ""
-#     _, _, text_to_pipeline = await extract_node.execute(user, ctx, "+180")
-#     assert text_to_pipeline == ""
-#     _, _, text_to_pipeline = await extract_node.execute(user, ctx, "-101")
-#     assert text_to_pipeline == "-101"
-#     _, _, text_to_pipeline = await extract_node.execute(user, ctx, "-1010")
-#     assert text_to_pipeline == ""
-#
-#
-# @pytest.mark.asyncio
-# async def test_re_data_extract_pass_scenario() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     extract_node = DataExtract(
-#         element_id="id_2",
-#         next_ids=["id_3"],
-#         node_type=NodeType.dataExtract,
-#         value="re(^[Пп]ривет[!)]?$)",
-#     )
-#     out_node = OutMessage(
-#         element_id="id_3", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     test_scenario = Scenario(
-#         "test", "id_1", {"id_1": in_node, "id_2": extract_node, "id_3": out_node}
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#     in_event = InEvent(user=user, text="привет)")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert user.current_node_id is None
-#     assert user.current_scenario_name is None
-#
-#
-# @pytest.mark.asyncio
-# async def test_re_data_extract_not_block_scenario() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     extract_node = DataExtract(
-#         element_id="id_2",
-#         next_ids=["id_3"],
-#         node_type=NodeType.dataExtract,
-#         value="re(^[Пп]ривет[!)]?$)",
-#     )
-#     out_node = OutMessage(
-#         element_id="id_3", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     test_scenario = Scenario(
-#         "test", "id_1", {"id_1": in_node, "id_2": extract_node, "id_3": out_node}
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#     in_event = InEvent(user=user, text="купи слона")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert user.current_node_id is None
-#     assert user.current_scenario_name is None
-#
-#
-# @pytest.mark.asyncio
-# async def test_logical_unit_not() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     extract_node = DataExtract(
-#         element_id="id_2",
-#         next_ids=["id_3"],
-#         node_type=NodeType.dataExtract,
-#         value="re(^[Пп]ривет[!)]?$)",
-#     )
-#     logical_not = LogicalUnit(
-#         element_id="id_3",
-#         next_ids=["id_4"],
-#         node_type=NodeType.logicalUnit,
-#         value="NOT",
-#     )
-#     out_node = OutMessage(
-#         element_id="id_4", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     test_scenario = Scenario(
-#         "test",
-#         "id_1",
-#         {"id_1": in_node, "id_2": extract_node, "id_3": logical_not, "id_4": out_node},
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#     in_event = InEvent(user=user, text="купи слона!)")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert user.current_node_id is None
-#     assert user.current_scenario_name is None
-#
-#
-# @pytest.mark.asyncio
-# async def test_re_data_extract_choose_only_way_bypass_not() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     extract_node = DataExtract(
-#         element_id="id_2",
-#         next_ids=["id_3"],
-#         node_type=NodeType.dataExtract,
-#         value="re(^[Дд]а$)",
-#     )
-#     logical_not = LogicalUnit(
-#         element_id="id_3",
-#         next_ids=["id_4", "id_5"],
-#         node_type=NodeType.logicalUnit,
-#         value="NOT",
-#     )
-#     out_node = OutMessage(
-#         element_id="id_4", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     out_node2 = OutMessage(
-#         element_id="id_5", value="TEXT2", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     test_scenario = Scenario(
-#         "test",
-#         "id_1",
-#         {
-#             "id_1": in_node,
-#             "id_2": extract_node,
-#             "id_3": logical_not,
-#             "id_4": out_node,
-#             "id_5": out_node2,
-#         },
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#     in_event = InEvent(user=user, text="купи слона!)")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT1"
-#     assert user.current_node_id is None
-#     assert user.current_scenario_name is None
-#
-#
-# @pytest.mark.asyncio
-# async def test_re_data_extract_choose_only_way_when_passed() -> None:
-#     in_node = InMessage(
-#         element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
-#     )
-#     extract_node = DataExtract(
-#         element_id="id_2",
-#         next_ids=["id_3"],
-#         node_type=NodeType.dataExtract,
-#         value="re(^[Дд]а$)",
-#     )
-#     logical_not = LogicalUnit(
-#         element_id="id_3",
-#         next_ids=["id_4", "id_5"],
-#         node_type=NodeType.logicalUnit,
-#         value="NOT",
-#     )
-#     out_node = OutMessage(
-#         element_id="id_4", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     out_node2 = OutMessage(
-#         element_id="id_5", value="TEXT2", next_ids=[], node_type=NodeType.outMessage
-#     )
-#     test_scenario = Scenario(
-#         "test",
-#         "id_1",
-#         {
-#             "id_1": in_node,
-#             "id_2": extract_node,
-#             "id_3": logical_not,
-#             "id_4": out_node,
-#             "id_5": out_node2,
-#         },
-#     )
-#     ep = EventProcessor([test_scenario], test_scenario.name)
-#     user = User(outer_id="1")
-#     in_event = InEvent(user=user, text="да")
-#     ctx: tp.Dict[str, str] = {}
-#     out_events, new_ctx = await ep.process_event(in_event, ctx)
-#     assert len(out_events) == 1
-#     assert isinstance(out_events[0], OutEvent)
-#     assert out_events[0].text == "TEXT2"
-#     assert user.current_node_id is None
-#     assert user.current_scenario_name is None
-#
-#
+@pytest.mark.asyncio
+async def test_in_out_buttons_out(mock_scenario: Scenario) -> None:
+    matchtext_node = MatchText(
+        element_id="id_1",
+        value="start",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
+    )
+    buttons = [("TEXT1_1", "id_98"), ("TEXT1_2", "id_99")]
+    matchtext_out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT_matchtext_scenario",
+        next_ids=["id_3"],
+        node_type=NodeType.outMessage,
+        buttons=buttons,
+    )
+    matchtext_out_node2 = OutMessage(
+        element_id="id_3",
+        value="TEXT_matchtext_scenario2",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_scenario = Scenario(
+        "matchtext_test",
+        "id_1",
+        {
+            "id_1": matchtext_node,
+            "id_2": matchtext_out_node,
+            "id_3": matchtext_out_node2,
+        },
+    )
+
+    fake_sg = FakeScenarioGetter(
+        {
+            mock_scenario.name: mock_scenario,
+            matchtext_scenario.name: matchtext_scenario,
+        }
+    )
+    ep = EventProcessor(
+        scenarios={
+            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
+            mock_scenario.name: {"intents": [], "phrases": []},
+        },
+        scenario_getter=fake_sg.find,
+        default_scenario_name=mock_scenario.name,
+    )
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx)
+
+    assert len(out_events) == 2
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert out_events[0].buttons is not None
+    assert out_events[0].buttons[0].text == buttons[0][0]
+    assert out_events[0].buttons[0].callback_data == buttons[0][1]
+    assert out_events[0].buttons[1].text == buttons[1][0]
+    assert out_events[0].buttons[1].callback_data == buttons[1][1]
+    assert out_events[1].text == matchtext_scenario.get_node_by_id("id_3").value
+    assert out_events[1].buttons is None
+    assert user.current_node_id == matchtext_out_node.element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+
+@pytest.mark.asyncio
+async def test_in_out_buttons_out_in(mock_scenario: Scenario) -> None:
+    matchtext_node = MatchText(
+        element_id="id_1",
+        value="start",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
+    )
+    buttons = [("TEXT1_1", "id_98"), ("TEXT1_2", "id_99")]
+    matchtext_out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT_matchtext_scenario",
+        next_ids=["id_3"],
+        node_type=NodeType.outMessage,
+        buttons=buttons,
+    )
+    matchtext_out_node2 = OutMessage(
+        element_id="id_3",
+        value="TEXT_matchtext_scenario2",
+        next_ids=["id_4"],
+        node_type=NodeType.outMessage,
+    )
+    in_node = InMessage(
+        element_id="id_4",
+        value="",
+        next_ids=[],
+        node_type=NodeType.inMessage,
+    )
+    matchtext_scenario = Scenario(
+        "matchtext_test",
+        "id_1",
+        {
+            "id_1": matchtext_node,
+            "id_2": matchtext_out_node,
+            "id_3": matchtext_out_node2,
+            "id_4": in_node,
+        },
+    )
+
+    fake_sg = FakeScenarioGetter(
+        {
+            mock_scenario.name: mock_scenario,
+            matchtext_scenario.name: matchtext_scenario,
+        }
+    )
+    ep = EventProcessor(
+        scenarios={
+            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
+            mock_scenario.name: {"intents": [], "phrases": []},
+        },
+        scenario_getter=fake_sg.find,
+        default_scenario_name=mock_scenario.name,
+    )
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx)
+
+    assert len(out_events) == 2
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert out_events[0].buttons is not None
+    assert out_events[0].buttons[0].text == buttons[0][0]
+    assert out_events[0].buttons[0].callback_data == buttons[0][1]
+    assert out_events[0].buttons[1].text == buttons[1][0]
+    assert out_events[0].buttons[1].callback_data == buttons[1][1]
+    assert out_events[1].text == matchtext_scenario.get_node_by_id("id_3").value
+    assert out_events[1].buttons is None
+    assert user.current_node_id == in_node.element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+
+@pytest.mark.asyncio
+async def test_in_out_buttons_out_in_button_out(mock_scenario: Scenario) -> None:
+    matchtext_node = MatchText(
+        element_id="id_1",
+        value="start",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
+    )
+    buttons = [("TEXT1_1", "id_4"), ("TEXT1_2", "id_99")]
+    matchtext_out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT_matchtext_scenario",
+        next_ids=["id_3"],
+        node_type=NodeType.outMessage,
+        buttons=buttons,
+    )
+    matchtext_out_node2 = OutMessage(
+        element_id="id_3",
+        value="TEXT_matchtext_scenario2",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_out_node3 = OutMessage(
+        element_id="id_4",
+        value="TEXT_matchtext_scenario3",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_scenario = Scenario(
+        "matchtext_test",
+        "id_1",
+        {
+            "id_1": matchtext_node,
+            "id_2": matchtext_out_node,
+            "id_3": matchtext_out_node2,
+            "id_4": matchtext_out_node3,
+        },
+    )
+
+    fake_sg = FakeScenarioGetter(
+        {
+            mock_scenario.name: mock_scenario,
+            matchtext_scenario.name: matchtext_scenario,
+        }
+    )
+    ep = EventProcessor(
+        scenarios={
+            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
+            mock_scenario.name: {"intents": [], "phrases": []},
+        },
+        scenario_getter=fake_sg.find,
+        default_scenario_name=mock_scenario.name,
+    )
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx)
+
+    assert len(out_events) == 2
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert out_events[0].buttons is not None
+    assert out_events[0].buttons[0].text == buttons[0][0]
+    assert out_events[0].buttons[0].callback_data == buttons[0][1]
+    assert out_events[0].buttons[1].text == buttons[1][0]
+    assert out_events[0].buttons[1].callback_data == buttons[1][1]
+    assert out_events[1].text == matchtext_scenario.get_node_by_id("id_3").value
+    assert out_events[1].buttons is None
+    assert user.current_node_id == matchtext_out_node.element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event = InEvent(user=user, text="", button_pushed_next="id_4")
+    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_4").value
+    assert out_events[0].buttons is None
+
+
+@pytest.mark.asyncio
+async def test_double_click(mock_scenario: Scenario) -> None:
+    matchtext_node = MatchText(
+        element_id="id_1",
+        value="start",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
+    )
+    buttons = [("TEXT1_1", "id_3")]
+    matchtext_out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT_matchtext_scenario",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+        buttons=buttons,
+    )
+    buttons2 = [("TEXT1_2", "id_4")]
+    matchtext_out_node2 = OutMessage(
+        element_id="id_3",
+        value="TEXT_matchtext_scenario2",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+        buttons=buttons2,
+    )
+    matchtext_out_node3 = OutMessage(
+        element_id="id_4",
+        value="TEXT_matchtext_scenario3",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_scenario = Scenario(
+        "matchtext_test",
+        "id_1",
+        {
+            "id_1": matchtext_node,
+            "id_2": matchtext_out_node,
+            "id_3": matchtext_out_node2,
+            "id_4": matchtext_out_node3,
+        },
+    )
+
+    fake_sg = FakeScenarioGetter(
+        {
+            mock_scenario.name: mock_scenario,
+            matchtext_scenario.name: matchtext_scenario,
+        }
+    )
+    ep = EventProcessor(
+        scenarios={
+            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
+            mock_scenario.name: {"intents": [], "phrases": []},
+        },
+        scenario_getter=fake_sg.find,
+        default_scenario_name=mock_scenario.name,
+    )
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node.value
+    assert out_events[0].buttons is not None
+    assert len(out_events[0].buttons) == 1
+    assert out_events[0].buttons[0].text == buttons[0][0]
+    assert out_events[0].buttons[0].callback_data == buttons[0][1]
+    assert user.current_node_id == matchtext_out_node.element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event2 = InEvent(user=user, button_pushed_next="id_3")
+    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node2.value
+    assert out_events[0].buttons is not None
+    assert len(out_events[0].buttons) == 1
+    assert out_events[0].buttons[0].text == buttons2[0][0]
+    assert out_events[0].buttons[0].callback_data == buttons2[0][1]
+    assert user.current_node_id == matchtext_out_node2.element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event3 = InEvent(user=user, button_pushed_next="id_4")
+    out_events, new_ctx = await ep.process_event(in_event3, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node3.value
+    assert out_events[0].buttons is None
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+async def test_re_data_extract() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {}
+    extract_node = DataExtract(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.dataExtract,
+        value="re(^[-]?((180$)|(((1[0-7]\d)|([1-9]\d?))$)))",
+    )  # выделяет числа от -180 до +180
+    events, new_ctx, text_to_pipeline = await extract_node.execute(user, ctx, "180")
+    assert events == []
+    assert new_ctx == {}
+    assert text_to_pipeline == "180"
+    events, new_ctx, text_to_pipeline = await extract_node.execute(user, ctx, "900")
+    assert events == []
+    assert new_ctx == {}
+    assert text_to_pipeline == ""
+    _, _, text_to_pipeline = await extract_node.execute(user, ctx, "+180")
+    assert text_to_pipeline == ""
+    _, _, text_to_pipeline = await extract_node.execute(user, ctx, "-101")
+    assert text_to_pipeline == "-101"
+    _, _, text_to_pipeline = await extract_node.execute(user, ctx, "-1010")
+    assert text_to_pipeline == ""
+
+
+@pytest.mark.asyncio
+async def test_logical_unit_not(mock_scenario: Scenario) -> None:
+    matchtext_node = MatchText(
+        element_id="id_1",
+        value="start",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
+    )
+    matchtext_out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT_matchtext_scenario",
+        next_ids=["id_3"],
+        node_type=NodeType.outMessage,
+    )
+    in_node = InMessage(
+        element_id="id_3",
+        value="",
+        next_ids=["id_4"],
+        node_type=NodeType.inMessage,
+    )
+    extract_node = DataExtract(
+        element_id="id_4",
+        value="re(^[Дд]а$)",
+        next_ids=["id_5"],
+        node_type=NodeType.dataExtract,
+    )
+    not_node = LogicalUnit(
+        element_id="id_5",
+        value="NOT",
+        next_ids=["id_6", "id_7"],
+        node_type=NodeType.logicalUnit,
+    )
+    matchtext_out_node1 = OutMessage(
+        element_id="id_6",
+        value="TEXT_matchtext_scenario1",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_out_node2 = OutMessage(
+        element_id="id_7",
+        value="TEXT_matchtext_scenario2",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_scenario = Scenario(
+        "matchtext_test",
+        "id_1",
+        {
+            "id_1": matchtext_node,
+            "id_2": matchtext_out_node,
+            "id_3": in_node,
+            "id_4": extract_node,
+            "id_5": not_node,
+            "id_6": matchtext_out_node1,
+            "id_7": matchtext_out_node2,
+        },
+    )
+
+    fake_sg = FakeScenarioGetter(
+        {
+            mock_scenario.name: mock_scenario,
+            matchtext_scenario.name: matchtext_scenario,
+        }
+    )
+    ep = EventProcessor(
+        scenarios={
+            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
+            mock_scenario.name: {"intents": [], "phrases": []},
+        },
+        scenario_getter=fake_sg.find,
+        default_scenario_name=mock_scenario.name,
+    )
+
+    user = User(outer_id="1")
+    start_in_event = InEvent(user=user, text="start")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node.value
+    assert user.current_node_id == in_node.element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event2 = InEvent(user=user, text="нетнетнет")
+    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node2.value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node.value
+    assert user.current_node_id == in_node.element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event2 = InEvent(user=user, text="да")
+    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node1.value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
 # @pytest.mark.asyncio
 # async def test_cycle_until_done() -> None:
 #     in_node = InMessage(
@@ -1218,63 +1250,63 @@ async def test_in_out_in_out(mock_scenario: Scenario) -> None:
 #     assert out_events[0].text == "TEXT1"
 #     assert user.current_node_id is None
 #     assert user.current_scenario_name is None
-#
-#
-# @pytest.mark.asyncio
-# async def test_remote_request_node() -> None:
-#     user = User(outer_id="1")
-#     ctx: tp.Dict[str, str] = {}
-#     remote_request = RemoteRequest(
-#         element_id="id_1",
-#         next_ids=[],
-#         node_type=NodeType.remoteRequest,
-#         value="""(curl -XGET 'https://catfact.ninja/fact')""",
-#     )
-#     events, new_ctx, text_to_pipeline = await remote_request.execute(user, ctx, "")
-#     assert events == []
-#     assert new_ctx == {}
-#     ret = json.loads(text_to_pipeline)
-#     assert "fact" in ret and "length" in ret
-#     assert len(ret["fact"]) == ret["length"]
-#
-#
-# @pytest.mark.asyncio
-# async def test_data_extract_json() -> None:
-#     user = User(outer_id="1")
-#     ctx: tp.Dict[str, str] = {}
-#     extract_node = DataExtract(
-#         element_id="id_1",
-#         next_ids=[],
-#         node_type=NodeType.dataExtract,
-#         value="""json(["first_key"][0]["second_key"])""",
-#     )
-#     json_to_extract = """{"first_key": [{"second_key": "tadam!"}]}"""
-#     events, new_ctx, text_to_pipeline = await extract_node.execute(
-#         user, ctx, json_to_extract
-#     )
-#     assert events == []
-#     assert new_ctx == {}
-#     assert text_to_pipeline == "tadam!"
-#
-#
-# @pytest.mark.asyncio
-# async def test_remote_request_node_templating() -> None:
-#     user = User(outer_id="1")
-#     ctx: tp.Dict[str, str] = {"some_key": "fact"}
-#     remote_request = RemoteRequest(
-#         element_id="id_1",
-#         next_ids=[],
-#         node_type=NodeType.remoteRequest,
-#         value="""(curl -XGET 'https://catfact.ninja/#some_key#')""",  # fact
-#     )
-#     events, new_ctx, text_to_pipeline = await remote_request.execute(user, ctx, "")
-#     assert events == []
-#     assert new_ctx == {}
-#     ret = json.loads(text_to_pipeline)
-#     assert "fact" in ret and "length" in ret
-#     assert len(ret["fact"]) == ret["length"]
-#
-#
+
+
+@pytest.mark.asyncio
+async def test_remote_request_node() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {}
+    remote_request = RemoteRequest(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.remoteRequest,
+        value="""(curl -XGET 'https://catfact.ninja/fact')""",
+    )
+    events, new_ctx, text_to_pipeline = await remote_request.execute(user, ctx, "")
+    assert events == []
+    assert new_ctx == {}
+    ret = json.loads(text_to_pipeline)
+    assert "fact" in ret and "length" in ret
+    assert len(ret["fact"]) == ret["length"]
+
+
+@pytest.mark.asyncio
+async def test_data_extract_json() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {}
+    extract_node = DataExtract(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.dataExtract,
+        value="""json(["first_key"][0]["second_key"])""",
+    )
+    json_to_extract = """{"first_key": [{"second_key": "tadam!"}]}"""
+    events, new_ctx, text_to_pipeline = await extract_node.execute(
+        user, ctx, json_to_extract
+    )
+    assert events == []
+    assert new_ctx == {}
+    assert text_to_pipeline == "tadam!"
+
+
+@pytest.mark.asyncio
+async def test_remote_request_node_templating() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {"some_key": "fact"}
+    remote_request = RemoteRequest(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.remoteRequest,
+        value="""(curl -XGET 'https://catfact.ninja/#some_key#')""",  # fact
+    )
+    events, new_ctx, text_to_pipeline = await remote_request.execute(user, ctx, "")
+    assert events == []
+    assert new_ctx == {}
+    ret = json.loads(text_to_pipeline)
+    assert "fact" in ret and "length" in ret
+    assert len(ret["fact"]) == ret["length"]
+
+
 # @pytest.mark.asyncio
 # async def test_edit_message() -> None:
 #     in_node = InMessage(

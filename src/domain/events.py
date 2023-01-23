@@ -45,61 +45,48 @@ class EventProcessor:
         :param event: событие
         :return: айдишники нод для последующего пути
         """
+        match_phrases_nodes = None
         if event.text:
             match_phrases_nodes = scenario.get_nodes_by_type(NodeType.matchText)
-            if len(match_phrases_nodes) == 1:
-                _, _, filtered_text = await match_phrases_nodes[0].execute(
-                    event.user, {}, event.text
-                )
-                if filtered_text:
-                    if not match_phrases_nodes[0].next_ids:
-                        raise Exception("matchText node need some child")
-                    res: tp.List[str] = match_phrases_nodes[0].next_ids
-                    return res
-            elif len(match_phrases_nodes) > 1:
-                if not match_phrases_nodes[0].next_ids:
-                    raise Exception("matchText node need some child")
-                or_node = scenario.get_node_by_id(match_phrases_nodes[0].next_ids[0])
-                if not or_node.next_ids:
-                    raise Exception("OR node must have any child")
-                for n in match_phrases_nodes:
-                    if not n.next_ids:
-                        raise Exception("matchText node need some child")
-                    if or_node.element_id not in n.next_ids:
-                        raise Exception("Not only one child for matchText nodes")
-                    _, _, filtered_text = await n.execute(event.user, {}, event.text)
-                    if filtered_text:
-                        return or_node.next_ids
-            else:
-                pass
         if event.intent:
-            # TODO: DRY this code
             match_phrases_nodes = scenario.get_nodes_by_type(NodeType.inIntent)
-            if len(match_phrases_nodes) == 1:
-                _, _, filtered_text = await match_phrases_nodes[0].execute(
-                    event.user, {}, event.text
-                )
-                if filtered_text:
-                    if not match_phrases_nodes[0].next_ids:
-                        raise Exception("matchText node need some child")
-                    res: tp.List[str] = match_phrases_nodes[0].next_ids  # type: ignore
-                    return res
-            elif len(match_phrases_nodes) > 1:
+        if match_phrases_nodes is None:
+            raise Exception("InEvent must have text or intent")
+
+        if len(match_phrases_nodes) == 1:
+            _, _, filtered_text = await match_phrases_nodes[0].execute(
+                event.user, {}, event.text
+            )
+            if filtered_text:
                 if not match_phrases_nodes[0].next_ids:
                     raise Exception("matchText node need some child")
-                or_node = scenario.get_node_by_id(match_phrases_nodes[0].next_ids[0])
-                if not or_node.next_ids:
-                    raise Exception("OR node must have any child")
-                for n in match_phrases_nodes:
-                    if not n.next_ids:
-                        raise Exception("matchText node need some child")
-                    if or_node.element_id not in n.next_ids:
-                        raise Exception("Not only one child for matchText nodes")
-                    _, _, filtered_text = await n.execute(event.user, {}, event.text)
-                    if filtered_text:
-                        return or_node.next_ids
-            else:
-                pass
+                res: tp.List[str] = match_phrases_nodes[0].next_ids
+                return res
+        elif len(match_phrases_nodes) > 1:
+            if not match_phrases_nodes[0].next_ids:
+                raise Exception("matchText node need some child")
+            or_node = scenario.get_node_by_id(match_phrases_nodes[0].next_ids[0])
+            if not or_node.next_ids:
+                raise Exception("OR node must have any child")
+            for n in match_phrases_nodes:
+                if not n.next_ids:
+                    raise Exception("matchText node need some child")
+                if or_node.element_id not in n.next_ids:
+                    raise Exception("Not only one child for matchText nodes")
+                _, _, filtered_text = await n.execute(event.user, {}, event.text)
+                if filtered_text:
+                    return or_node.next_ids
+        else:
+            pass
+        return []
+
+    @staticmethod
+    def is_button_in_events(events: tp.List[OutEvent]) -> str:
+        buttons_node_id = ""
+        for event in events:
+            if event.buttons:
+                buttons_node_id = event.linked_node_id
+        return buttons_node_id
 
     async def process_event(
         self, event: InEvent, ctx: tp.Dict[str, str]
@@ -144,42 +131,24 @@ class EventProcessor:
                 user.current_scenario_name = current_scenario.name
                 current_node = current_scenario.get_node_by_id(current_scenario.root_id)
                 nodes_id = current_node.next_ids
-        if not nodes_id:
-            print(current_scenario.name)
+        if event.button_pushed_next:
+            nodes_id = [event.button_pushed_next]
+        elif not nodes_id:
             raise Exception("Absense of next nodes with set scenario is not acceptable")
 
         # текущий сценарий и последующие айдишники нод мы нашли
         # current_scenario - текущий сценарий, nodes_id - айдишники следующих нод
         if len(nodes_id) != 1:
             raise Exception("Only one child must be from regular node")
-        current_node = current_scenario.get_node_by_id(nodes_id[0])
 
-        # идем по сценарию пока не встретим спец блоки
         output: tp.List[OutEvent] = []
 
-        if current_node.node_type in (
-            NodeType.outMessage,
-            NodeType.setVariable,
-            NodeType.remoteRequest,
-            NodeType.dataExtract,
-        ):
-            out_events, update_ctx, out_text = await current_node.execute(
-                user, ctx, event.text
-            )
-            output += out_events
-            ctx.update(update_ctx)
+        current_node = current_scenario.get_node_by_id(nodes_id[0])
+        if event.button_pushed_next:
+            current_node = current_scenario.get_node_by_id(event.button_pushed_next)
 
-        if current_node.next_ids is None:
-            raise Exception("Only one child must be from regular node")
-        if len(current_node.next_ids) > 1:
-            raise Exception("Only one child must be from regular node")
-        if len(current_node.next_ids) == 0:
-            user.current_node_id = None
-            user.current_scenario_name = None
-            return output, ctx
-
+        # идем по сценарию пока не встретим спец блоки
         for _ in range(15):
-            current_node = current_scenario.get_node_by_id(current_node.next_ids[0])
             if current_node.node_type in (
                 NodeType.outMessage,
                 NodeType.setVariable,
@@ -194,15 +163,26 @@ class EventProcessor:
             elif current_node.node_type == NodeType.inMessage:
                 user.current_node_id = current_node.element_id
                 return output, ctx
+            elif current_node.node_type == NodeType.logicalUnit:
+                parents = current_scenario.get_parents_of_node(current_node.element_id)
+                """
+                Надо находить родителей логических блоков
+                """
+                raise
 
             if current_node.next_ids is None:
                 raise Exception("Only one child must be from regular node")
             if len(current_node.next_ids) > 1:
                 raise Exception("Only one child must be from regular node")
             if len(current_node.next_ids) == 0:
-                user.current_node_id = None
-                user.current_scenario_name = None
+                last_buttons_node_id = self.is_button_in_events(output)
+                if last_buttons_node_id:
+                    user.current_node_id = last_buttons_node_id
+                else:
+                    user.current_node_id = None
+                    user.current_scenario_name = None
                 return output, ctx
+            current_node = current_scenario.get_node_by_id(current_node.next_ids[0])
 
         return output, {}
 

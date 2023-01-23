@@ -205,11 +205,15 @@ class LogicalUnit(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        if self.next_ids is None:
+            raise ValueError("Logical unit must have only two child")
+        if len(self.next_ids) != 2:
+            raise ValueError("Logical unit must have only two child")
         if self.value == "NOT":
             if in_text:
-                return [], {}, ""
+                return [], {}, self.next_ids[1]
             else:
-                return [], {}, "Logical unit NOT was passed"
+                return [], {}, self.next_ids[0]
         elif self.value == "OR":
             # TODO: create logic
             return [], {}, "tratata"
