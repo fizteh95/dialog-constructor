@@ -196,7 +196,7 @@ class DataExtract(ExecuteNode):
         elif extract_type == "json":
             input_json = json.loads(in_text)  # noqa
             search_path = self.value[5:-1]
-            return [], {}, eval(f"input_json{search_path}")
+            return [], {}, str(eval(f"input_json{search_path}"))
         else:
             raise NotImplementedError("Such data extract type not implemented")
 
@@ -215,8 +215,21 @@ class LogicalUnit(ExecuteNode):
             else:
                 return [], {}, self.next_ids[0]
         elif self.value == "OR":
-            # TODO: create logic
-            return [], {}, "tratata"
+            if in_text is None:
+                raise ValueError("Logical unit AND must have string in input")
+            in_results = in_text.split("###$###")  # должен быть список строк после
+            for ir in in_results:
+                if ir:
+                    return [], {}, self.next_ids[0]
+            return [], {}, self.next_ids[1]
+        elif self.value == "AND":
+            if in_text is None:
+                raise ValueError("Logical unit AND must have string in input")
+            in_results = in_text.split("###$###")  # должен быть список строк
+            for ir in in_results:
+                if not ir:
+                    return [], {}, self.next_ids[1]
+            return [], {}, self.next_ids[0]
         else:
             raise NotImplementedError("Logical unit with such type not implemented")
 
@@ -291,10 +304,10 @@ class Scenario:
     def get_parents_of_node(self, node_id: str) -> tp.List[ExecuteNode]:
         res: tp.List[ExecuteNode] = []
         current_node = self.get_node_by_id(node_id=node_id)
-        if current_node.next_ids is None:
-            return []
         for n in self.nodes.values():
-            if n.element_id in current_node.next_ids:
+            if n.next_ids is None:
+                continue
+            if current_node.element_id in n.next_ids:
                 res.append(n)
         return res
 
