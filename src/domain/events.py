@@ -32,6 +32,9 @@ class EventProcessor:
         if self.default_scenario_name not in self.scenarios:
             raise Exception("No scenario with default name in scenarios")
 
+    def add_scenario(self, scenario: Scenario, intents: tp.List[str], phrases: tp.List[str]) -> None:
+        self.scenarios[scenario.name] = {"intents": intents, "phrases": phrases}
+
     async def check_scenario_start(
         self, scenario: Scenario, event: InEvent
     ) -> tp.List[str]:
