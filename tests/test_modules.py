@@ -7,10 +7,11 @@ from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
 from src.domain.events import EventProcessor
-from src.domain.model import EditMessage, MatchText
+from src.domain.model import EditMessage
 from src.domain.model import Event
 from src.domain.model import InEvent
 from src.domain.model import InMessage
+from src.domain.model import MatchText
 from src.domain.model import NodeType
 from src.domain.model import OutEvent
 from src.domain.model import OutMessage
@@ -44,6 +45,7 @@ class FakeSender(Sender):
         ctx: tp.Dict[str, str],
     ) -> str:
         """Send to outer service"""
+        self.out_messages.append(event)
         return f"outer_{event.linked_node_id}"
 
 
@@ -107,7 +109,9 @@ async def test_message_bus(mock_scenario: Scenario) -> None:
     await repo.add_scenario(mock_scenario)
     await repo.add_scenario(test_scenario)
 
-    ep = EventProcessor({mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
     await wrapped_ep.add_scenario(test_scenario.name)
 
@@ -156,7 +160,9 @@ async def test_context_saving(mock_scenario: Scenario) -> None:
     await repo.add_scenario(mock_scenario)
     await repo.add_scenario(test_scenario)
 
-    ep = EventProcessor({mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
     await wrapped_ep.add_scenario(test_scenario.name)
 
@@ -207,7 +213,9 @@ async def test_out_messages_saving(mock_scenario: Scenario) -> None:
     await repo.add_scenario(mock_scenario)
     await repo.add_scenario(test_scenario)
 
-    ep = EventProcessor({mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
     await wrapped_ep.add_scenario(test_scenario.name)
 
@@ -232,6 +240,7 @@ async def test_out_messages_saving(mock_scenario: Scenario) -> None:
 
 @pytest.mark.asyncio
 async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> None:
+    # TODO: rewrite test
     in_node = MatchText(
         element_id="id_1", value="Hi!", next_ids=["id_2"], node_type=NodeType.matchText
     )
@@ -253,7 +262,9 @@ async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> N
     user = User(outer_id="1")
     await repo.update_user_context(user, {"test_key": "test_value"})
 
-    ep = EventProcessor({mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
     await wrapped_ep.add_scenario(test_scenario.name)
 
@@ -364,7 +375,10 @@ async def test_in_memory_repo_out_message_history() -> None:
 @pytest.mark.asyncio
 async def test_poller_adapter(mock_scenario: Scenario) -> None:
     in_node = MatchText(
-        element_id="id_1", value="Test text", next_ids=["id_2"], node_type=NodeType.matchText
+        element_id="id_1",
+        value="Test text",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
     )
     out_node = OutMessage(
         element_id="id_2",
@@ -388,7 +402,9 @@ async def test_poller_adapter(mock_scenario: Scenario) -> None:
     await repo.add_scenario(mock_scenario)
     await repo.add_scenario(test_scenario)
 
-    ep = EventProcessor({mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
     await wrapped_ep.add_scenario(test_scenario.name)
 
@@ -450,7 +466,9 @@ async def test_scenario_to_dict() -> None:
         node_type=NodeType.outMessage,
     )
     test_scenario = Scenario(
-        "test", "id_1", {"id_1": in_node, "id_2": out_node},
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node},
     )
 
     res = test_scenario.to_dict()
@@ -487,3 +505,51 @@ async def test_scenario_to_dict() -> None:
         == test_scenario.nodes["id_2"].node_type
     )
     assert recreated_scenario.nodes["id_2"].value == test_scenario.nodes["id_2"].value
+
+
+@pytest.mark.asyncio
+async def test_out_text_substitution(mock_scenario: Scenario) -> None:
+    in_node = MatchText(
+        element_id="id_1", value="Hi!", next_ids=["id_2"], node_type=NodeType.matchText
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node},
+    )
+
+    scenario_texts = {"TEXT1": "text with templating $test_key$"}
+
+    repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario)
+    await repo.add_scenario(test_scenario)
+    await repo.add_scenario_texts(test_scenario.name, scenario_texts)
+    user = User(outer_id="1")
+    await repo.update_user_context(user, {"test_key": "test_value"})
+
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(test_scenario.name)
+
+    sender = FakeSender()
+    wrapped_sender = SenderWrapper(sender=sender, repo=repo)
+
+    bus = ConcreteMessageBus()
+    bus.register(wrapped_ep)
+    bus.register(wrapped_sender)
+
+    in_event = InEvent(user=user, text="Hi!")
+
+    await bus.public_message(in_event)
+
+    assert len(sender.out_messages) == 1
+    assert isinstance(sender.out_messages[0], OutEvent)
+    assert sender.out_messages[0].text == "text with templating test_value"

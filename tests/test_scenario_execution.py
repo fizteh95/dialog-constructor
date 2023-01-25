@@ -4,9 +4,10 @@ import typing as tp
 import pytest
 
 from src.domain.events import EventProcessor
-from src.domain.model import Button, GetVariable
+from src.domain.model import Button
 from src.domain.model import DataExtract
 from src.domain.model import EditMessage
+from src.domain.model import GetVariable
 from src.domain.model import InEvent
 from src.domain.model import InIntent
 from src.domain.model import InMessage

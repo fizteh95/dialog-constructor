@@ -52,6 +52,7 @@ class OutEvent(Event):
     user: User
     text: str
     linked_node_id: str
+    scenario_name: str
     buttons: tp.Optional[tp.List[Button]] = None
     node_to_edit: tp.Optional[str] = None
     ...
@@ -154,7 +155,12 @@ class OutMessage(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
-        out_event = OutEvent(user=user, text=self.value, linked_node_id=self.element_id)
+        out_event = OutEvent(
+            user=user,
+            text=self.value,
+            linked_node_id=self.element_id,
+            scenario_name=user.current_scenario_name,
+        )
         if self.buttons:
             out_event.buttons = [
                 Button(text=x[0], callback_data=x[1]) for x in self.buttons
@@ -173,6 +179,7 @@ class EditMessage(ExecuteNode):
             text=self.value,
             node_to_edit=self.next_ids[0],  # [0]
             linked_node_id=self.element_id,
+            scenario_name=user.current_scenario_name,
         )
         if self.buttons:
             out_event.buttons = [
