@@ -82,7 +82,7 @@ class TgSender(Sender):
                     else:
                         new_text += s
             return new_text
-        return "Text not found"
+        return text
 
     async def send(
         self,

@@ -46,7 +46,6 @@ async def test_start_matchtext_scenario(
             intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -54,7 +53,7 @@ async def test_start_matchtext_scenario(
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -82,7 +81,6 @@ async def test_start_matchtext_scenario_with_or(
             intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -90,7 +88,7 @@ async def test_start_matchtext_scenario_with_or(
     in_event = InEvent(user=user, text="not start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -116,7 +114,6 @@ async def test_start_intent_scenario(
             intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -126,7 +123,7 @@ async def test_start_intent_scenario(
     )
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -154,7 +151,6 @@ async def test_start_intent_scenario_with_or(
             intent_scenario_with_or.name: {"intents": ["test_intent2"], "phrases": []},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -164,7 +160,7 @@ async def test_start_intent_scenario_with_or(
     )
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -190,7 +186,6 @@ async def test_start_default_scenario(
             intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -198,7 +193,7 @@ async def test_start_default_scenario(
     in_event = InEvent(user=user, intent="habahaba", text="habahaba")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -238,7 +233,6 @@ async def test_start_scenario_with_several_intent_scenarios(
             },
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -246,7 +240,7 @@ async def test_start_scenario_with_several_intent_scenarios(
     in_event = InEvent(user=user, intent="another_test_intent", text="habahaba")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -286,7 +280,6 @@ async def test_start_scenario_with_several_matchtext_scenarios(
             },
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -294,7 +287,7 @@ async def test_start_scenario_with_several_matchtext_scenarios(
     in_event = InEvent(user=user, intent="", text="another start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -344,7 +337,6 @@ async def test_in_out_out(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -352,7 +344,7 @@ async def test_in_out_out(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
@@ -403,7 +395,6 @@ async def test_in_out_in(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -411,7 +402,7 @@ async def test_in_out_in(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -468,7 +459,6 @@ async def test_in_out_out_in(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -476,7 +466,7 @@ async def test_in_out_out_in(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
@@ -569,7 +559,6 @@ async def test_in_out_x7_in(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -577,7 +566,7 @@ async def test_in_out_x7_in(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 7
     assert isinstance(out_events[0], OutEvent)
@@ -646,7 +635,6 @@ async def test_in_out_in_out(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -654,7 +642,7 @@ async def test_in_out_in_out(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -663,7 +651,7 @@ async def test_in_out_in_out(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event = InEvent(user=user, text="Some blah blah")
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -715,7 +703,6 @@ async def test_in_out_buttons_out(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -723,7 +710,7 @@ async def test_in_out_buttons_out(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
@@ -789,7 +776,6 @@ async def test_in_out_buttons_out_in(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -797,7 +783,7 @@ async def test_in_out_buttons_out_in(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
@@ -863,7 +849,6 @@ async def test_in_out_buttons_out_in_button_out(mock_scenario: Scenario) -> None
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -871,7 +856,7 @@ async def test_in_out_buttons_out_in_button_out(mock_scenario: Scenario) -> None
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
@@ -887,7 +872,7 @@ async def test_in_out_buttons_out_in_button_out(mock_scenario: Scenario) -> None
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event = InEvent(user=user, text="", button_pushed_next="id_4")
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_4").value
@@ -946,7 +931,6 @@ async def test_double_click(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -954,7 +938,7 @@ async def test_double_click(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -966,7 +950,7 @@ async def test_double_click(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event2 = InEvent(user=user, button_pushed_next="id_3")
-    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node2.value
@@ -978,7 +962,7 @@ async def test_double_click(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event3 = InEvent(user=user, button_pushed_next="id_4")
-    out_events, new_ctx = await ep.process_event(in_event3, ctx)
+    out_events, new_ctx = await ep.process_event(in_event3, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node3.value
@@ -1082,7 +1066,6 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -1090,7 +1073,7 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
     start_in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(start_in_event, ctx)
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -1098,7 +1081,7 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event2 = InEvent(user=user, text="нетнетнет")
-    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node1.value
@@ -1106,7 +1089,7 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name is None
 
     # и еще раз, по другому пути
-    out_events, new_ctx = await ep.process_event(start_in_event, ctx)
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -1114,7 +1097,7 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event2 = InEvent(user=user, text="да")
-    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node2.value
@@ -1205,7 +1188,6 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -1213,7 +1195,7 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
     start_in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(start_in_event, ctx)
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -1221,7 +1203,7 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event2 = InEvent(user=user, text="нетнетнет")
-    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node2.value
@@ -1229,7 +1211,7 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name is None
 
     # и еще раз, по другому пути
-    out_events, new_ctx = await ep.process_event(start_in_event, ctx)
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -1237,7 +1219,7 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event2 = InEvent(user=user, text="да")
-    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node1.value
@@ -1314,7 +1296,6 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -1322,7 +1303,7 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     start_in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(start_in_event, ctx)
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -1330,7 +1311,7 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event = InEvent(user=user, text="не хочу заканчивать сценарий")
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == out_node.value
@@ -1338,7 +1319,7 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event = InEvent(user=user, text="все равно не хочу")
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == out_node.value
@@ -1346,7 +1327,7 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event = InEvent(user=user, text="да")
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == out_node2.value
@@ -1409,7 +1390,6 @@ async def test_set_variable(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -1417,7 +1397,7 @@ async def test_set_variable(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {"old_var": "some_text"}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -1425,7 +1405,7 @@ async def test_set_variable(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event = InEvent(user=user, text="Hi!")
-    out_events, new_ctx = await ep.process_event(in_event, new_ctx)
+    out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 2
     assert new_ctx["old_var"] == "some_text"
     assert new_ctx["test_var1"] == in_event.text
@@ -1491,7 +1471,6 @@ async def test_set_variable_update(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -1499,7 +1478,7 @@ async def test_set_variable_update(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {"old_var": "some_text"}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node.value
@@ -1507,7 +1486,7 @@ async def test_set_variable_update(mock_scenario: Scenario) -> None:
     assert user.current_scenario_name == matchtext_scenario.name
 
     in_event = InEvent(user=user, text="Hi!")
-    out_events, new_ctx = await ep.process_event(in_event, new_ctx)
+    out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 1
     assert new_ctx["old_var"] == in_event.text
     assert len(out_events) == 1
@@ -1620,7 +1599,6 @@ async def test_edit_message(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -1628,7 +1606,7 @@ async def test_edit_message(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 3
     assert isinstance(out_events[0], OutEvent)
@@ -1694,7 +1672,6 @@ async def test_edit_message_and_final_node(mock_scenario: Scenario) -> None:
             matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
             mock_scenario.name: {"intents": [], "phrases": []},
         },
-        scenario_getter=fake_sg.find,
         default_scenario_name=mock_scenario.name,
     )
 
@@ -1702,7 +1679,7 @@ async def test_edit_message_and_final_node(mock_scenario: Scenario) -> None:
     in_event = InEvent(user=user, text="start")
     ctx: tp.Dict[str, str] = {}
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == out_node.value
@@ -1716,7 +1693,7 @@ async def test_edit_message_and_final_node(mock_scenario: Scenario) -> None:
     assert out_events[0].buttons[1].callback_data == buttons[1][1]
 
     in_event2 = InEvent(user=user, button_pushed_next="id_3")
-    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == edit_node.value
@@ -1727,11 +1704,11 @@ async def test_edit_message_and_final_node(mock_scenario: Scenario) -> None:
     assert user.current_node_id is None
     assert user.current_scenario_name is None
 
-    out_events, new_ctx = await ep.process_event(in_event, ctx)
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
 
     in_event2 = InEvent(user=user, button_pushed_next="id_4")
-    out_events, new_ctx = await ep.process_event(in_event2, ctx)
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == out_node2.value

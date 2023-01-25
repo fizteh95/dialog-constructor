@@ -85,7 +85,7 @@ class XMLParser(Parser):
                     print("node has no element id")
                     continue
 
-                next_nodes = arrows.get(element_id)
+                next_nodes = arrows.get(element_id, [])
 
                 need_class = class_dict[node_type.value]
                 dialogue_node = need_class(
@@ -121,7 +121,7 @@ class XMLParser(Parser):
                     buttons.append((text, ",".join(next_node_ids)))
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
-                result[source_id].next_ids = None
+                result[source_id].next_ids = []
         root_id = result[list(result.keys())[0]].element_id
         return root_id, list(result.values())
 

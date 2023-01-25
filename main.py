@@ -7,11 +7,30 @@ from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
 from src.domain.events import EventProcessor
-from src.domain.model import Scenario
+from src.domain.model import Scenario, InIntent, NodeType, OutMessage
 from src.domain.scenario_loader import XMLParser
 from src.entrypoints.poller import TgPoller
 from src.service_layer.message_bus import ConcreteMessageBus
 from src.service_layer.sender import TgSender
+
+
+def mock_scenario() -> Scenario:
+    mock_node = InIntent(
+        element_id="id_1",
+        value="mock_start",
+        next_ids=["id_2"],
+        node_type=NodeType.inIntent,
+    )
+    mock_out_node = OutMessage(
+        element_id="id_2",
+        value="Подключаем оператора",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    default_scenario = Scenario(
+        "default", "id_1", {"id_1": mock_node, "id_2": mock_out_node}
+    )
+    return default_scenario
 
 
 async def main() -> None:
@@ -21,10 +40,15 @@ async def main() -> None:
     parsed_nodes = {x.element_id: x for x in nodes}
     scenario = Scenario(name="weather-demo", root_id=root_id, nodes=parsed_nodes)
 
-    repo = InMemoryRepo()
+    mock_scenario_ = mock_scenario()
 
-    ep = EventProcessor([scenario], scenario.name)
+    repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario_)
+    await repo.add_scenario(scenario)
+
+    ep = EventProcessor({mock_scenario_.name: {"intents": [], "phrases": []}}, mock_scenario_.name)
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(scenario.name)
 
     bot = Bot(token="5023614422:AAEIwysH_RgMug_GpVV8b3ZpEw4kVnRL3IU")
 
