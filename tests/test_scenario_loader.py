@@ -1,9 +1,3 @@
-import pytest
-
-from src.dialogues.domain import Dialogue
-from src.dialogues.scenario_loader import XMLParser
-
-
 def test_scenario_loader() -> None:
     # xml_src_path = "src/resources/dialogue-schema-test.xml"
     # parser = XMLParser()

@@ -7,20 +7,6 @@ import aiogram
 
 from src.domain.model import OutEvent
 
-texts = {
-    "TEXT1": "Введите широту",
-    "TEXT2": "Неправильная широта, попробуйте еще раз",
-    "TEXT3": "Введите долготу",
-    "TEXT4": "Неправильная долгота, попробуйте еще раз",
-    "TEXT5": "Температура в заданном месте: $temperature$ градусов Цельсия",
-    "TEXT6": "Что-то пошло не так",
-    "TEXT7": "Хотите посмотреть фичу изменения сообщения?",
-    "TEXT8": "Да",
-    "TEXT9": "Нет",
-    "TEXT10": "Сообщение изменено ;)",
-    "TEXT11": "Сценарий окончен.",
-}
-
 
 class Sender(ABC):
     def __init__(self, *args: tp.Any, **kwargs: tp.Any) -> None:
@@ -62,27 +48,27 @@ class TgSender(Sender):
             for button in event.buttons:
                 keyboard.row(
                     aiogram.types.InlineKeyboardButton(
-                        text=self.prepare_text(button.text, ctx),
+                        text=button.text,
                         callback_data=button.callback_data,
                     )
                 )
         return keyboard
 
-    @staticmethod
-    def prepare_text(text: str, ctx: tp.Dict[str, str]) -> str:
-        # TODO: move to RE
-        if text in texts:
-            new_text = texts[text]
-            if "$" in new_text:
-                splits = new_text.split("$")
-                new_text = ""
-                for s in splits:
-                    if s in ctx:
-                        new_text += str(ctx[s])
-                    else:
-                        new_text += s
-            return new_text
-        return "Text not found"
+    # @staticmethod
+    # def prepare_text(text: str, ctx: tp.Dict[str, str]) -> str:
+    #     # TODO: move to RE
+    #     if text in texts:
+    #         new_text = texts[text]
+    #         if "$" in new_text:
+    #             splits = new_text.split("$")
+    #             new_text = ""
+    #             for s in splits:
+    #                 if s in ctx:
+    #                     new_text += str(ctx[s])
+    #                 else:
+    #                     new_text += s
+    #         return new_text
+    #     return text
 
     async def send(
         self,
@@ -99,7 +85,7 @@ class TgSender(Sender):
             )
             res = await self.bot.edit_message_text(
                 chat_id=event.user.outer_id,
-                text=self.prepare_text(event.text, ctx),
+                text=event.text,
                 message_id=message_id_to_edit,
                 reply_markup=keyboard,
             )
@@ -107,7 +93,7 @@ class TgSender(Sender):
             keyboard = await self.get_keyboard(event, ctx)
             res = await self.bot.send_message(
                 chat_id=event.user.outer_id,
-                text=self.prepare_text(event.text, ctx),
+                text=event.text,
                 reply_markup=keyboard,
             )
         await asyncio.sleep(1)

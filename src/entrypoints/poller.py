@@ -4,16 +4,19 @@ from abc import abstractmethod
 
 import aiogram
 
-from src.adapters.repository import AbstractRepo
 from src.domain.model import InEvent
-from src.service_layer.message_bus import MessageBus
+from src.domain.model import User
 
 
 class Poller(ABC):
-    def __init__(self, bus: MessageBus, repo: AbstractRepo) -> None:  # callback: tp.Callable[[InEvent], None]
+    def __init__(
+        self,
+        message_handler: tp.Callable[[InEvent], tp.Awaitable[None]],
+        user_finder: tp.Callable[[tp.Dict[str, str]], tp.Awaitable[User]],
+    ) -> None:
         """Initialize of entrypoints"""
-        self.bus = bus
-        self.repo = repo
+        self.message_handler = message_handler
+        self.user_finder = user_finder
 
     @abstractmethod
     async def poll(self) -> None:
@@ -21,9 +24,14 @@ class Poller(ABC):
 
 
 class TgPoller(Poller):
-    def __init__(self, bus: MessageBus, repo: AbstractRepo, bot: aiogram.Bot) -> None:  # callback: tp.Callable[[InEvent], None]
+    def __init__(
+        self,
+        message_handler: tp.Callable[[InEvent], tp.Awaitable[None]],
+        user_finder: tp.Callable[[tp.Dict[str, str]], tp.Awaitable[User]],
+        bot: aiogram.Bot,
+    ) -> None:
         """Initialize of entrypoints"""
-        super().__init__(bus, repo)
+        super().__init__(message_handler, user_finder)
         self.bot = bot
         self.dp = aiogram.Dispatcher(self.bot)
         self.dp.register_message_handler(self.process_message)
@@ -37,14 +45,16 @@ class TgPoller(Poller):
         except Exception as e:
             raise e
 
-        user = await self.repo.get_or_create_user(
-            outer_id=tg_message.from_user.id,
-            nickname=tg_message.from_user.username,
-            name=tg_message.from_user.first_name,
-            surname=tg_message.from_user.last_name,
+        user = await self.user_finder(
+            dict(
+                outer_id=tg_message.from_user.id,
+                nickname=tg_message.from_user.username,
+                name=tg_message.from_user.first_name,
+                surname=tg_message.from_user.last_name,
+            )
         )
         message = InEvent(user=user, text=text)
-        await self.bus.public_message(message=message)
+        await self.message_handler(message)
 
     async def process_button_push(
         self,
@@ -59,14 +69,16 @@ class TgPoller(Poller):
         except Exception as e:
             raise e
 
-        user = await self.repo.get_or_create_user(
-            outer_id=query.from_user.id,
-            nickname=query.from_user.username,
-            name=query.from_user.first_name,
-            surname=query.from_user.last_name,
+        user = await self.user_finder(
+            dict(
+                outer_id=query.from_user.id,
+                nickname=query.from_user.username,
+                name=query.from_user.first_name,
+                surname=query.from_user.last_name,
+            )
         )
         message = InEvent(user=user, button_pushed_next=pushed_button)
-        await self.bus.public_message(message=message)
+        await self.message_handler(message)
 
     async def poll(self) -> None:
         """Poll from outer service. Must be run in background task"""

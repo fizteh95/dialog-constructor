@@ -3,6 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 from collections import defaultdict
 
+from src.domain.model import Scenario
 from src.domain.model import User
 
 
@@ -39,12 +40,32 @@ class AbstractRepo(ABC):
     ) -> None:
         """Get user history of out messages"""
 
+    @abstractmethod
+    async def get_scenario_by_name(self, name: str) -> Scenario:
+        """Get scenario by its name"""
+
+    @abstractmethod
+    async def add_scenario(self, scenario: Scenario) -> None:
+        """Add scenario in repository"""
+
+    @abstractmethod
+    async def add_scenario_texts(
+        self, scenario_name: str, texts: tp.Dict[str, str]
+    ) -> None:
+        """Add texts for templating scenario"""
+
+    @abstractmethod
+    async def get_scenario_text(self, scenario_name: str, template_name: str) -> str:
+        """Return template value"""
+
 
 class InMemoryRepo(AbstractRepo):
     def __init__(self) -> None:
         self.users: tp.Dict[str, User] = {}
         self.users_ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
         self.out_messages: tp.Dict[str, tp.List[tp.Dict[str, str]]] = defaultdict(list)
+        self.scenarios: tp.Dict[str, tp.Dict[str, tp.Any]] = {}
+        self.scenario_texts: tp.Dict[str, tp.Dict[str, str]] = {}
 
     async def get_or_create_user(self, **kwargs: tp.Any) -> User:
         """Get by outer_id or create user"""
@@ -90,3 +111,26 @@ class InMemoryRepo(AbstractRepo):
     ) -> None:
         """Get user history of out messages"""
         self.out_messages[user.outer_id].append(ids_pair)
+
+    async def get_scenario_by_name(self, name: str) -> Scenario:
+        """Get scenario by its name"""
+        return Scenario.from_dict(self.scenarios[name])
+
+    async def add_scenario(self, scenario: Scenario) -> None:
+        """Add scenario in repository"""
+        self.scenarios[scenario.name] = scenario.to_dict()
+
+    async def add_scenario_texts(
+        self, scenario_name: str, texts: tp.Dict[str, str]
+    ) -> None:
+        """Add texts for templating scenario"""
+        self.scenario_texts[scenario_name] = texts
+
+    async def get_scenario_text(self, scenario_name: str, template_name: str) -> str:
+        """Return template value"""
+        try:
+            texts = self.scenario_texts[scenario_name]
+            return texts[template_name]
+        except KeyError:
+            print(f"Error, template {template_name} not found")
+            return template_name

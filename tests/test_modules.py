@@ -3,6 +3,7 @@ import typing as tp
 import pytest
 
 from src.adapters.ep_wrapper import EPWrapper
+from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
 from src.domain.events import EventProcessor
@@ -10,12 +11,14 @@ from src.domain.model import EditMessage
 from src.domain.model import Event
 from src.domain.model import InEvent
 from src.domain.model import InMessage
+from src.domain.model import MatchText
 from src.domain.model import NodeType
 from src.domain.model import OutEvent
 from src.domain.model import OutMessage
 from src.domain.model import Scenario
 from src.domain.model import SetVariable
 from src.domain.model import User
+from src.entrypoints.poller import Poller
 from src.service_layer.message_bus import ConcreteMessageBus
 from src.service_layer.sender import Sender
 
@@ -42,13 +45,60 @@ class FakeSender(Sender):
         ctx: tp.Dict[str, str],
     ) -> str:
         """Send to outer service"""
+        self.out_messages.append(event)
         return f"outer_{event.linked_node_id}"
 
 
+class FakePoller(Poller):
+    def __init__(
+        self,
+        message_handler: tp.Callable[[InEvent], tp.Awaitable[None]],
+        user_finder: tp.Callable[[tp.Dict[str, str]], tp.Awaitable[User]],
+    ) -> None:
+        super().__init__(message_handler=message_handler, user_finder=user_finder)
+
+    async def poll(self) -> tp.AsyncIterator[InEvent]:  # type: ignore
+        user = await self.user_finder(
+            dict(
+                outer_id="1",
+            )
+        )
+        message = InEvent(user=user, text="Test text")
+        await self.message_handler(message)
+
+
 @pytest.mark.asyncio
-async def test_message_bus() -> None:
-    in_node = InMessage(
-        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+async def test_scenario_getter(
+    matchtext_scenario: Scenario, intent_scenario: Scenario, mock_scenario: Scenario
+) -> None:
+    repo = InMemoryRepo()
+    await repo.add_scenario(matchtext_scenario)
+    await repo.add_scenario(intent_scenario)
+    await repo.add_scenario(mock_scenario)
+
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(matchtext_scenario.name)
+    await wrapped_ep.add_scenario(intent_scenario.name)
+
+    user = User(outer_id="1")
+    in_event = InEvent(
+        user=user, intent="test_intent", text="phrase for triggered intent"
+    )
+    out_events = await wrapped_ep.handle_message(in_event)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == intent_scenario.get_node_by_id("id_2").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+async def test_message_bus(mock_scenario: Scenario) -> None:
+    in_node = MatchText(
+        element_id="id_1", value="Hi!", next_ids=["id_2"], node_type=NodeType.matchText
     )
     out_node = OutMessage(
         element_id="id_2", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
@@ -56,9 +106,14 @@ async def test_message_bus() -> None:
     test_scenario = Scenario("test", "id_1", {"id_1": in_node, "id_2": out_node})
 
     repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario)
+    await repo.add_scenario(test_scenario)
 
-    ep = EventProcessor([test_scenario], test_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(test_scenario.name)
 
     listener = FakeListener()
 
@@ -84,9 +139,9 @@ async def test_message_bus() -> None:
 
 
 @pytest.mark.asyncio
-async def test_context_saving() -> None:
-    in_node = InMessage(
-        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+async def test_context_saving(mock_scenario: Scenario) -> None:
+    in_node = MatchText(
+        element_id="id_1", value="Hi!", next_ids=["id_2"], node_type=NodeType.matchText
     )
     set_variable = SetVariable(
         element_id="id_2",
@@ -102,9 +157,14 @@ async def test_context_saving() -> None:
     )
 
     repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario)
+    await repo.add_scenario(test_scenario)
 
-    ep = EventProcessor([test_scenario], test_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(test_scenario.name)
 
     listener = FakeListener()
 
@@ -124,9 +184,9 @@ async def test_context_saving() -> None:
 
 
 @pytest.mark.asyncio
-async def test_out_messages_saving() -> None:
-    in_node = InMessage(
-        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+async def test_out_messages_saving(mock_scenario: Scenario) -> None:
+    in_node = MatchText(
+        element_id="id_1", value="Hi!", next_ids=["id_2"], node_type=NodeType.matchText
     )
     out_node = OutMessage(
         element_id="id_2",
@@ -150,9 +210,14 @@ async def test_out_messages_saving() -> None:
     )
 
     repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario)
+    await repo.add_scenario(test_scenario)
 
-    ep = EventProcessor([test_scenario], test_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(test_scenario.name)
 
     sender = FakeSender()
     wrapped_sender = SenderWrapper(sender=sender, repo=repo)
@@ -174,9 +239,10 @@ async def test_out_messages_saving() -> None:
 
 
 @pytest.mark.asyncio
-async def test_context_available_in_wrapped_sender() -> None:
-    in_node = InMessage(
-        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> None:
+    # TODO: rewrite test
+    in_node = MatchText(
+        element_id="id_1", value="Hi!", next_ids=["id_2"], node_type=NodeType.matchText
     )
     out_node = OutMessage(
         element_id="id_2",
@@ -191,11 +257,16 @@ async def test_context_available_in_wrapped_sender() -> None:
     )
 
     repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario)
+    await repo.add_scenario(test_scenario)
     user = User(outer_id="1")
     await repo.update_user_context(user, {"test_key": "test_value"})
 
-    ep = EventProcessor([test_scenario], test_scenario.name)
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(test_scenario.name)
 
     sender = FakeSender()
     wrapped_sender = SenderWrapper(sender=sender, repo=repo)
@@ -299,3 +370,186 @@ async def test_in_memory_repo_out_message_history() -> None:
     assert len(history[1]) == 1
     assert "id_2" in history[1]
     assert history[1]["id_2"] == "100501"
+
+
+@pytest.mark.asyncio
+async def test_poller_adapter(mock_scenario: Scenario) -> None:
+    in_node = MatchText(
+        element_id="id_1",
+        value="Test text",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=["id_3"],
+        node_type=NodeType.outMessage,
+    )
+    in_node2 = InMessage(
+        element_id="id_1", value="", next_ids=["id_4"], node_type=NodeType.inMessage
+    )
+    out_node2 = OutMessage(
+        element_id="id_4", value="TEXT2", next_ids=[], node_type=NodeType.outMessage
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node, "id_3": in_node2, "id_4": out_node2},
+    )
+
+    repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario)
+    await repo.add_scenario(test_scenario)
+
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(test_scenario.name)
+
+    sender = FakeListener()
+
+    bus = ConcreteMessageBus()
+    bus.register(wrapped_ep)
+    bus.register(sender)
+
+    poller_adapter = PollerAdapter(bus=bus, repo=repo)
+    poller = FakePoller(
+        message_handler=poller_adapter.message_handler,
+        user_finder=poller_adapter.user_finder,
+    )
+
+    await poller.poll()
+    assert len(sender.events) == 2
+    assert isinstance(sender.events[0], InEvent)
+    assert sender.events[0].text == "Test text"
+    assert isinstance(sender.events[1], OutEvent)
+    assert sender.events[1].text == "TEXT1"
+
+    await poller.poll()
+    assert len(sender.events) == 4
+    assert isinstance(sender.events[2], InEvent)
+    assert sender.events[2].text == "Test text"
+    assert isinstance(sender.events[3], OutEvent)
+    assert sender.events[3].text == "TEXT1"
+
+
+@pytest.mark.asyncio
+async def test_nodes_to_dict() -> None:
+    test_node = OutMessage(
+        element_id="id_1",
+        value="TEXT1",
+        next_ids=["id_2"],
+        node_type=NodeType.outMessage,
+    )
+    res = test_node.to_dict()
+    assert res
+
+    recreated_node = OutMessage.from_dict(res)
+    assert isinstance(recreated_node, OutMessage)
+    assert recreated_node.element_id == test_node.element_id
+    assert recreated_node.value == test_node.value
+    assert recreated_node.next_ids == test_node.next_ids
+    assert recreated_node.node_type == test_node.node_type
+
+
+@pytest.mark.asyncio
+async def test_scenario_to_dict() -> None:
+    in_node = InMessage(
+        element_id="id_1", value="", next_ids=["id_2"], node_type=NodeType.inMessage
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node},
+    )
+
+    res = test_scenario.to_dict()
+    assert res
+
+    recreated_scenario = Scenario.from_dict(res)
+    assert isinstance(recreated_scenario, Scenario)
+    assert recreated_scenario.name == test_scenario.name
+    assert recreated_scenario.root_id == test_scenario.root_id
+    assert recreated_scenario.intent_names == test_scenario.intent_names
+    assert len(recreated_scenario.nodes) == len(test_scenario.nodes)
+    assert (
+        recreated_scenario.nodes["id_1"].element_id
+        == test_scenario.nodes["id_1"].element_id
+    )
+    assert (
+        recreated_scenario.nodes["id_1"].next_ids
+        == test_scenario.nodes["id_1"].next_ids
+    )
+    assert (
+        recreated_scenario.nodes["id_1"].node_type
+        == test_scenario.nodes["id_1"].node_type
+    )
+    assert (
+        recreated_scenario.nodes["id_2"].element_id
+        == test_scenario.nodes["id_2"].element_id
+    )
+    assert (
+        recreated_scenario.nodes["id_2"].next_ids
+        == test_scenario.nodes["id_2"].next_ids
+    )
+    assert (
+        recreated_scenario.nodes["id_2"].node_type
+        == test_scenario.nodes["id_2"].node_type
+    )
+    assert recreated_scenario.nodes["id_2"].value == test_scenario.nodes["id_2"].value
+
+
+@pytest.mark.asyncio
+async def test_out_text_substitution(mock_scenario: Scenario) -> None:
+    in_node = MatchText(
+        element_id="id_1", value="Hi!", next_ids=["id_2"], node_type=NodeType.matchText
+    )
+    out_node = OutMessage(
+        element_id="id_2",
+        value="TEXT1",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    test_scenario = Scenario(
+        "test",
+        "id_1",
+        {"id_1": in_node, "id_2": out_node},
+    )
+
+    scenario_texts = {"TEXT1": "text with templating $test_key$"}
+
+    repo = InMemoryRepo()
+    await repo.add_scenario(mock_scenario)
+    await repo.add_scenario(test_scenario)
+    await repo.add_scenario_texts(test_scenario.name, scenario_texts)
+    user = User(outer_id="1")
+    await repo.update_user_context(user, {"test_key": "test_value"})
+
+    ep = EventProcessor(
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
+    )
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    await wrapped_ep.add_scenario(test_scenario.name)
+
+    sender = FakeSender()
+    wrapped_sender = SenderWrapper(sender=sender, repo=repo)
+
+    bus = ConcreteMessageBus()
+    bus.register(wrapped_ep)
+    bus.register(wrapped_sender)
+
+    in_event = InEvent(user=user, text="Hi!")
+
+    await bus.public_message(in_event)
+
+    assert len(sender.out_messages) == 1
+    assert isinstance(sender.out_messages[0], OutEvent)
+    assert sender.out_messages[0].text == "text with templating test_value"
