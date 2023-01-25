@@ -67,6 +67,7 @@ class NodeType(Enum):
     logicalUnit = "logicalUnit"
     remoteRequest = "remoteRequest"
     setVariable = "setVariable"
+    getVariable = "getVariable"
     ...
 
 
@@ -270,6 +271,21 @@ class SetVariable(ExecuteNode):
             raise NotImplementedError("Such variable type not implemented")
 
 
+class GetVariable(ExecuteNode):
+    async def execute(
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        var_name = self.value.split("(")[1].split(")")[0]
+        var_type = self.value.split("(")[0]
+        if var_type == "user":
+            res = ctx.get(var_name)
+            if res is None:
+                res = ""
+            return [], {}, res
+        else:
+            raise NotImplementedError("Such variable type not implemented")
+
+
 class_dict = {
     "inIntent": InIntent,
     "matchText": MatchText,
@@ -279,6 +295,7 @@ class_dict = {
     "remoteRequest": RemoteRequest,
     "dataExtract": DataExtract,
     "setVariable": SetVariable,
+    "getVariable": GetVariable,
     "logicalUnit": LogicalUnit,
 }
 

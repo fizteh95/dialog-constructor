@@ -161,6 +161,7 @@ class EventProcessor:
             if current_node.node_type in (
                 NodeType.outMessage,
                 NodeType.setVariable,
+                NodeType.getVariable,
                 NodeType.remoteRequest,
                 NodeType.dataExtract,
             ):

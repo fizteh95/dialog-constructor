@@ -4,7 +4,7 @@ import typing as tp
 import pytest
 
 from src.domain.events import EventProcessor
-from src.domain.model import Button
+from src.domain.model import Button, GetVariable
 from src.domain.model import DataExtract
 from src.domain.model import EditMessage
 from src.domain.model import InEvent
@@ -1489,6 +1489,94 @@ async def test_set_variable_update(mock_scenario: Scenario) -> None:
     out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 1
     assert new_ctx["old_var"] == in_event.text
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_out_node2.value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+async def test_get_variable(mock_scenario: Scenario) -> None:
+    matchtext_node = MatchText(
+        element_id="id_1",
+        value="start",
+        next_ids=["id_2"],
+        node_type=NodeType.matchText,
+    )
+    set_variable = SetVariable(
+        element_id="id_2",
+        value="user(test_var1)",
+        next_ids=["id_3"],
+        node_type=NodeType.setVariable,
+    )
+    get_variable = GetVariable(
+        element_id="id_3",
+        value="user(test_var1)",
+        next_ids=["id_4"],
+        node_type=NodeType.getVariable,
+    )
+    extract_node = DataExtract(
+        element_id="id_4",
+        value="re(^[Ss]tart$)",
+        next_ids=["id_5"],
+        node_type=NodeType.dataExtract,
+    )
+    not_node = LogicalUnit(
+        element_id="id_5",
+        value="NOT",
+        next_ids=["id_6", "id_7"],
+        node_type=NodeType.logicalUnit,
+    )
+    matchtext_out_node1 = OutMessage(
+        element_id="id_6",
+        value="TEXT_matchtext_scenario1",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_out_node2 = OutMessage(
+        element_id="id_7",
+        value="TEXT_matchtext_scenario2",
+        next_ids=[],
+        node_type=NodeType.outMessage,
+    )
+    matchtext_scenario = Scenario(
+        "matchtext_test",
+        "id_1",
+        {
+            "id_1": matchtext_node,
+            "id_2": set_variable,
+            "id_3": get_variable,
+            "id_4": extract_node,
+            "id_5": not_node,
+            "id_6": matchtext_out_node1,
+            "id_7": matchtext_out_node2,
+        },
+    )
+
+    fake_sg = FakeScenarioGetter(
+        {
+            mock_scenario.name: mock_scenario,
+            matchtext_scenario.name: matchtext_scenario,
+        }
+    )
+    ep = EventProcessor(
+        scenarios={
+            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
+            mock_scenario.name: {"intents": [], "phrases": []},
+        },
+        default_scenario_name=mock_scenario.name,
+    )
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start")
+    ctx: tp.Dict[str, str] = {"old_var": "some_text"}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    print(new_ctx)
+
+    assert new_ctx["old_var"] == "some_text"
+    assert new_ctx["test_var1"] == in_event.text
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_out_node2.value
