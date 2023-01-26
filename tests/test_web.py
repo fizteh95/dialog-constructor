@@ -68,8 +68,8 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     bus.register(listener)
 
     web_adapter = WebAdapter(repo=repo, bus=bus, ep_wrapped=wrapped_ep)
-    web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
-    web_client = TestClient(web.app)
+    _web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
+    web_client = TestClient(_web.app)
 
     data_message = {"user_id": "test123", "text": "Hi!"}
     response = web_client.post("/message_text", json=data_message)
@@ -79,7 +79,7 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
 
     assert len(listener.events) == 2
     assert isinstance(listener.events[0], InEvent)
-    assert listener.events[0].text == "Hi!"
+    assert listener.events[0].text == data_message["text"]
     assert isinstance(listener.events[1], OutEvent)
     assert listener.events[1].text == out_node.value
 
