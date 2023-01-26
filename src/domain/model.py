@@ -12,8 +12,11 @@ import aiohttp
 import curlparser
 
 
+@dataclass(kw_only=True)
 class Event(ABC):
     """Message for bus"""
+
+    to_process: bool = True
 
 
 @dataclass
@@ -33,8 +36,8 @@ class User:
         self.current_scenario_name = name
 
 
-@dataclass
-class InEvent(Event):
+@dataclass(kw_only=True)
+class InEvent(Event):  # noqa
     user: User
     text: tp.Optional[str] = None
     button_pushed_next: tp.Optional[str] = None
@@ -47,8 +50,8 @@ class Button:
     callback_data: tp.Optional[str]
 
 
-@dataclass
-class OutEvent(Event):
+@dataclass(kw_only=True)
+class OutEvent(Event):  # noqa
     user: User
     text: str
     linked_node_id: str

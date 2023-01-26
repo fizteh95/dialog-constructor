@@ -17,7 +17,6 @@ class Sender(ABC):
         self,
         event: OutEvent,
         history: tp.List[tp.Dict[str, str]],
-        ctx: tp.Dict[str, str],
     ) -> str:
         """Send to outer service"""
 
@@ -37,10 +36,9 @@ class TgSender(Sender):
                 return pair[linked_node_id]
         return ""
 
+    @staticmethod
     async def get_keyboard(
-        self,
         event: OutEvent,
-        ctx: tp.Dict[str, str],
     ) -> None | aiogram.types.InlineKeyboardMarkup:
         keyboard = None
         if event.buttons is not None:
@@ -54,32 +52,15 @@ class TgSender(Sender):
                 )
         return keyboard
 
-    # @staticmethod
-    # def prepare_text(text: str, ctx: tp.Dict[str, str]) -> str:
-    #     # TODO: move to RE
-    #     if text in texts:
-    #         new_text = texts[text]
-    #         if "$" in new_text:
-    #             splits = new_text.split("$")
-    #             new_text = ""
-    #             for s in splits:
-    #                 if s in ctx:
-    #                     new_text += str(ctx[s])
-    #                 else:
-    #                     new_text += s
-    #         return new_text
-    #     return text
-
     async def send(
         self,
         event: OutEvent,
         history: tp.List[tp.Dict[str, str]],
-        ctx: tp.Dict[str, str],
     ) -> str:
         """Send to outer service"""
         print("send message")
         if event.node_to_edit:
-            keyboard = await self.get_keyboard(event, ctx)
+            keyboard = await self.get_keyboard(event)
             message_id_to_edit = await self._search_linked_message(
                 history=history, linked_node_id=event.node_to_edit
             )
@@ -90,11 +71,11 @@ class TgSender(Sender):
                 reply_markup=keyboard,
             )
         else:
-            keyboard = await self.get_keyboard(event, ctx)
+            keyboard = await self.get_keyboard(event)
             res = await self.bot.send_message(
                 chat_id=event.user.outer_id,
                 text=event.text,
                 reply_markup=keyboard,
             )
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
         return str(res.message_id)

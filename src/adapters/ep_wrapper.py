@@ -77,4 +77,6 @@ class EPWrapper(AbstractEPWrapper):
 
     async def handle_message(self, message: Event) -> tp.List[Event]:
         """Интерфейс для взаимодействия с шиной"""
-        return await self.process_event(message)
+        if isinstance(message, InEvent) and message.to_process:
+            return await self.process_event(message)
+        return []

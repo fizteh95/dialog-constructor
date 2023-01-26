@@ -6,6 +6,7 @@ from src.adapters.ep_wrapper import EPWrapper
 from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
+from src.adapters.web_adapter import WebAdapter
 from src.domain.events import EventProcessor
 from src.domain.model import InIntent
 from src.domain.model import NodeType
@@ -13,6 +14,7 @@ from src.domain.model import OutMessage
 from src.domain.model import Scenario
 from src.domain.scenario_loader import XMLParser
 from src.entrypoints.poller import TgPoller
+from src.entrypoints.web import Web
 from src.service_layer.message_bus import ConcreteMessageBus
 from src.service_layer.sender import TgSender
 
@@ -47,7 +49,7 @@ async def main() -> None:
         "TEXT2": "Неправильная широта, попробуйте еще раз",
         "TEXT3": "Введите долготу",
         "TEXT4": "Неправильная долгота, попробуйте еще раз",
-        "TEXT5": "Температура в заданном месте: $temperature$ градусов Цельсия",
+        "TEXT5": "Температура в заданном месте: {{temperature}} градусов Цельсия",
         "TEXT6": "Что-то пошло не так",
         "TEXT7": "Хотите посмотреть фичу изменения сообщения?",
         "TEXT8": "Да",
@@ -69,12 +71,16 @@ async def main() -> None:
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
     await wrapped_ep.add_scenario(scenario.name)
 
+    bus = ConcreteMessageBus()
+
+    web_adapter = WebAdapter(repo=repo, bus=bus, ep_wrapped=wrapped_ep)
+    web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
+
     bot = Bot(token="5023614422:AAEIwysH_RgMug_GpVV8b3ZpEw4kVnRL3IU")
 
     sender = TgSender(bot=bot)
     wrapped_sender = SenderWrapper(sender=sender, repo=repo)
 
-    bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
     bus.register(wrapped_sender)
 
@@ -85,7 +91,7 @@ async def main() -> None:
         bot=bot,
     )
 
-    await poller.poll()
+    await asyncio.gather(poller.poll(), web.start())
 
 
 if __name__ == "__main__":

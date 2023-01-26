@@ -8,7 +8,6 @@ from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
 from src.domain.events import EventProcessor
 from src.domain.model import EditMessage
-from src.domain.model import Event
 from src.domain.model import InEvent
 from src.domain.model import InMessage
 from src.domain.model import MatchText
@@ -21,16 +20,7 @@ from src.domain.model import User
 from src.entrypoints.poller import Poller
 from src.service_layer.message_bus import ConcreteMessageBus
 from src.service_layer.sender import Sender
-
-
-class FakeListener:
-    def __init__(self) -> None:
-        self.events: tp.List[Event] = []
-
-    async def handle_message(self, message: Event) -> tp.List[Event]:
-        """Интерфейс для взаимодействия с шиной"""
-        self.events.append(message)
-        return []
+from tests.conftest import FakeListener
 
 
 class FakeSender(Sender):
@@ -42,7 +32,6 @@ class FakeSender(Sender):
         self,
         event: OutEvent,
         history: tp.List[tp.Dict[str, str]],
-        ctx: tp.Dict[str, str],
     ) -> str:
         """Send to outer service"""
         self.out_messages.append(event)
@@ -524,7 +513,7 @@ async def test_out_text_substitution(mock_scenario: Scenario) -> None:
         {"id_1": in_node, "id_2": out_node},
     )
 
-    scenario_texts = {"TEXT1": "text with templating $test_key$"}
+    scenario_texts = {"TEXT1": "text with templating {{test_key}}"}
 
     repo = InMemoryRepo()
     await repo.add_scenario(mock_scenario)

@@ -203,3 +203,13 @@ def another_matchtext_scenario() -> Scenario:
     )
 
     return matchtext_scenario
+
+
+class FakeListener:
+    def __init__(self) -> None:
+        self.events: tp.List[Event] = []
+
+    async def handle_message(self, message: Event) -> tp.List[Event]:
+        """Интерфейс для взаимодействия с шиной"""
+        self.events.append(message)
+        return []
