@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import os
 import typing as tp
 
@@ -19,6 +20,29 @@ from src.entrypoints.poller import Poller
 from src.entrypoints.web import Web
 from src.service_layer.message_bus import MessageBus
 from src.service_layer.sender import Sender
+
+
+def upload_scenarios_to_repo() -> None:
+    tree = os.walk("./src/scenarios")
+    paths = []
+    scenarios: tp.Dict[str, Scenario] = {}
+    for item in tree:
+        paths.append(item)
+    """
+    ('./src/scenarios', ['quiz', 'mock', 'weather_demo'], [])
+    ('./src/scenarios/quiz', [], ['text_templates.json', 'scenario.xml'])
+    ('./src/scenarios/mock', [], ['text_templates.json', 'scenario.py'])
+    ('./src/scenarios/weather_demo', [], ['text_templates.json', 'scenario.xml'])
+    """
+    scenario_names = paths[0][1]
+    for i, name in enumerate(scenario_names):
+        scenario_files = paths[i + 1][2]
+        if "scenario.py" in scenario_files:
+            make_scenario = __import__(f"src.scenarios.{name}.scenario.make_scenario")
+
+
+def download_scenarios_to_ep() -> None:
+    ...
 
 
 def mock_scenario() -> Scenario:
@@ -52,6 +76,7 @@ async def bootstrap(
     sender: tp.Type[Sender] | None = None,
     sender_wrapper: tp.Type[AbstractSenderWrapper] | None = None,
 ) -> tp.Any:
+    upload_scenarios_to_repo()
     xml_src_path = "./src/scenarios/weather_demo/scenario.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
