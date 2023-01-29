@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import json
 import os
 import typing as tp
 
@@ -11,10 +12,8 @@ from src.adapters.repository import AbstractRepo
 from src.adapters.sender_wrapper import AbstractSenderWrapper
 from src.adapters.web_adapter import AbstractWebAdapter
 from src.domain.events import EventProcessor
-from src.domain.model import InIntent
-from src.domain.model import NodeType
-from src.domain.model import OutMessage
 from src.domain.model import Scenario
+from src.domain.scenario_loader import Parser
 from src.domain.scenario_loader import XMLParser
 from src.entrypoints.poller import Poller
 from src.entrypoints.web import Web
@@ -22,46 +21,41 @@ from src.service_layer.message_bus import MessageBus
 from src.service_layer.sender import Sender
 
 
-def upload_scenarios_to_repo() -> None:
+async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
     tree = os.walk("./src/scenarios")
     paths = []
-    scenarios: tp.Dict[str, Scenario] = {}
     for item in tree:
-        paths.append(item)
-    """
-    ('./src/scenarios', ['quiz', 'mock', 'weather_demo'], [])
-    ('./src/scenarios/quiz', [], ['text_templates.json', 'scenario.xml'])
-    ('./src/scenarios/mock', [], ['text_templates.json', 'scenario.py'])
-    ('./src/scenarios/weather_demo', [], ['text_templates.json', 'scenario.xml'])
-    """
+        if "__pycache__" not in item[0]:
+            paths.append(item)
     scenario_names = paths[0][1]
+    scenario_names = [x for x in scenario_names if x != "__pycache__"]
     for i, name in enumerate(scenario_names):
         scenario_files = paths[i + 1][2]
         if "scenario.py" in scenario_files:
-            make_scenario = __import__(f"src.scenarios.{name}.scenario.make_scenario")
+            make_scenario_file = importlib.import_module(
+                f"src.scenarios.{name}.scenario"
+            )
+            scenario = make_scenario_file.make_scenario()
+        elif "scenario.xml" in scenario_files:
+            root_id, nodes = parser.parse(
+                src_path=f"./src/scenarios/{name}/scenario.xml"
+            )
+            parsed_nodes = {x.element_id: x for x in nodes}
+            scenario = Scenario(name=name, root_id=root_id, nodes=parsed_nodes)
+        else:
+            continue
+        with open(f"./src/scenarios/{name}/text_templates.json", "r") as f:
+            text_dict = json.load(f)
+        await repo.add_scenario(scenario=scenario)
+        await repo.add_scenario_texts(scenario_name=scenario.name, texts=text_dict)
 
 
-def download_scenarios_to_ep() -> None:
-    ...
-
-
-def mock_scenario() -> Scenario:
-    mock_node = InIntent(
-        element_id="id_1",
-        value="mock_start",
-        next_ids=["id_2"],
-        node_type=NodeType.inIntent,
-    )
-    mock_out_node = OutMessage(
-        element_id="id_2",
-        value="Подключаем оператора",
-        next_ids=[],
-        node_type=NodeType.outMessage,
-    )
-    default_scenario = Scenario(
-        "default", "id_1", {"id_1": mock_node, "id_2": mock_out_node}
-    )
-    return default_scenario
+async def download_scenarios_to_ep(
+    wrapped_ep: AbstractEPWrapper, repo: AbstractRepo
+) -> None:
+    scenario_names = await repo.get_all_scenario_names()
+    for name in scenario_names:
+        await wrapped_ep.add_scenario(name)
 
 
 async def bootstrap(
@@ -76,40 +70,19 @@ async def bootstrap(
     sender: tp.Type[Sender] | None = None,
     sender_wrapper: tp.Type[AbstractSenderWrapper] | None = None,
 ) -> tp.Any:
-    upload_scenarios_to_repo()
-    xml_src_path = "./src/scenarios/weather_demo/scenario.xml"
-    parser = XMLParser()
-    root_id, nodes = parser.parse(src_path=xml_src_path)
-    parsed_nodes = {x.element_id: x for x in nodes}
-    scenario = Scenario(name="weather-demo", root_id=root_id, nodes=parsed_nodes)
-    scenario_texts = {
-        "TEXT1": "Введите широту",
-        "TEXT2": "Неправильная широта, попробуйте еще раз",
-        "TEXT3": "Введите долготу",
-        "TEXT4": "Неправильная долгота, попробуйте еще раз",
-        "TEXT5": "Температура в заданном месте: {{temperature}} градусов Цельсия",
-        "TEXT6": "Что-то пошло не так",
-        "TEXT7": "Хотите посмотреть фичу изменения сообщения?",
-        "TEXT8": "Да",
-        "TEXT9": "Нет",
-        "TEXT10": "Сообщение изменено ;)",
-        "TEXT11": "Сценарий окончен.",
-    }
-
-    mock_scenario_ = mock_scenario()
 
     concrete_repo = repo()
-    await concrete_repo.add_scenario(mock_scenario_)
-    await concrete_repo.add_scenario(scenario)
-    await concrete_repo.add_scenario_texts(scenario.name, scenario_texts)
+    parser = XMLParser()
+    await upload_scenarios_to_repo(repo=concrete_repo, parser=parser)
 
-    concrete_bus = bus()
-
+    mock_scenario = await concrete_repo.get_scenario_by_name("default")
     concrete_ep = ep(
-        {mock_scenario_.name: {"intents": [], "phrases": []}}, mock_scenario_.name
+        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
     )
     wrapped_ep = ep_wrapper(event_processor=concrete_ep, repo=concrete_repo)
-    await wrapped_ep.add_scenario(scenario.name)
+    await download_scenarios_to_ep(wrapped_ep=wrapped_ep, repo=concrete_repo)
+
+    concrete_bus = bus()
     concrete_bus.register(wrapped_ep)
 
     concrete_web_adapter = web_adapter(

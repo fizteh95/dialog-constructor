@@ -58,6 +58,10 @@ class AbstractRepo(ABC):
     async def get_scenario_text(self, scenario_name: str, template_name: str) -> str:
         """Return template value"""
 
+    @abstractmethod
+    async def get_all_scenario_names(self) -> tp.List[str]:
+        """Return all scenario names"""
+
 
 class InMemoryRepo(AbstractRepo):
     def __init__(self) -> None:
@@ -134,3 +138,7 @@ class InMemoryRepo(AbstractRepo):
         except KeyError:
             print(f"Error, template {template_name} not found")
             return template_name
+
+    async def get_all_scenario_names(self) -> tp.List[str]:
+        """Return all scenario names"""
+        return list(self.scenarios.keys())

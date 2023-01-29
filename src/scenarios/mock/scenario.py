@@ -1,4 +1,7 @@
-from src.domain.model import Scenario, InIntent, NodeType, OutMessage
+from src.domain.model import InIntent
+from src.domain.model import NodeType
+from src.domain.model import OutMessage
+from src.domain.model import Scenario
 
 
 def make_scenario() -> Scenario:
@@ -10,7 +13,7 @@ def make_scenario() -> Scenario:
     )
     mock_out_node = OutMessage(
         element_id="id_2",
-        value="Подключаем оператора",
+        value="TEXT1",
         next_ids=[],
         node_type=NodeType.outMessage,
     )
