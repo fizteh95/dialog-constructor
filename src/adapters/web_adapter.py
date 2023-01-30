@@ -57,8 +57,12 @@ class WebAdapter(AbstractWebAdapter):
         """Process income message from poller"""
         user_outer_id = unparsed_event["user_id"]
         text = unparsed_event["text"]
+        project_id = unparsed_event["project_id"]
+        # TODO
         user = await self.repo.get_or_create_user(outer_id=user_outer_id)
-        message = InEvent(user=user, text=text, to_process=False)
+        message = InEvent(
+            user=user, text=text, to_process=False, project_name=project_id
+        )
         await self.bus.public_message(message=message)
         events: tp.List[OutEvent] = await self.ep.process_event(message)  # type: ignore
         new_events = []

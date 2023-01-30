@@ -39,6 +39,7 @@ class User:
 @dataclass(kw_only=True)
 class InEvent(Event):  # noqa
     user: User
+    project_name: str
     text: tp.Optional[str] = None
     button_pushed_next: tp.Optional[str] = None
     intent: tp.Optional[str] = None
@@ -56,6 +57,7 @@ class OutEvent(Event):  # noqa
     text: str
     linked_node_id: str
     scenario_name: str
+    project_name: tp.Optional[str] = None
     buttons: tp.Optional[tp.List[Button]] = None
     node_to_edit: tp.Optional[str] = None
     ...

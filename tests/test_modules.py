@@ -52,7 +52,7 @@ class FakePoller(Poller):
                 outer_id="1",
             )
         )
-        message = InEvent(user=user, text="Test text")
+        message = InEvent(user=user, text="Test text", project_name="test")
         await self.message_handler(message)
 
 
@@ -74,7 +74,10 @@ async def test_scenario_getter(
 
     user = User(outer_id="1")
     in_event = InEvent(
-        user=user, intent="test_intent", text="phrase for triggered intent"
+        user=user,
+        intent="test_intent",
+        text="phrase for triggered intent",
+        project_name="test",
     )
     out_events = await wrapped_ep.handle_message(in_event)
     assert len(out_events) == 1
@@ -111,7 +114,7 @@ async def test_message_bus(mock_scenario: Scenario) -> None:
     bus.register(listener)
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="Hi!")
+    in_event = InEvent(user=user, text="Hi!", project_name="test")
 
     await bus.public_message(in_event)
 
@@ -162,7 +165,7 @@ async def test_context_saving(mock_scenario: Scenario) -> None:
     bus.register(listener)
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="Hi!")
+    in_event = InEvent(user=user, text="Hi!", project_name="test")
 
     await bus.public_message(in_event)
 
@@ -216,7 +219,7 @@ async def test_out_messages_saving(mock_scenario: Scenario) -> None:
     bus.register(wrapped_sender)
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="Hi!")
+    in_event = InEvent(user=user, text="Hi!", project_name="test")
 
     await bus.public_message(in_event)
 
@@ -264,7 +267,7 @@ async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> N
     bus.register(wrapped_ep)
     bus.register(wrapped_sender)
 
-    in_event = InEvent(user=user, text="Hi!")
+    in_event = InEvent(user=user, text="Hi!", project_name="test")
 
     await bus.public_message(in_event)
 
@@ -535,7 +538,7 @@ async def test_out_text_substitution(mock_scenario: Scenario) -> None:
     bus.register(wrapped_ep)
     bus.register(wrapped_sender)
 
-    in_event = InEvent(user=user, text="Hi!")
+    in_event = InEvent(user=user, text="Hi!", project_name="test")
 
     await bus.public_message(in_event)
 

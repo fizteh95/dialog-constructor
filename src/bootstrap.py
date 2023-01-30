@@ -98,7 +98,7 @@ async def bootstrap(
         bot = Bot(token="5023614422:AAEIwysH_RgMug_GpVV8b3ZpEw4kVnRL3IU")
 
     if sender is not None and sender_wrapper is not None:
-        concrete_sender = sender(bot=bot)
+        concrete_sender = sender(bot=bot, project_name="test")
         wrapped_sender = sender_wrapper(sender=concrete_sender, repo=concrete_repo)
         concrete_bus.register(wrapped_sender)
 
@@ -108,6 +108,7 @@ async def bootstrap(
             message_handler=concrete_poller_adapter.message_handler,
             user_finder=concrete_poller_adapter.user_finder,
             bot=bot,
+            project_name="test",
         )
 
     if poller is not None and poller_adapter is not None:

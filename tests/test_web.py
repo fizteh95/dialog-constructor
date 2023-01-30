@@ -71,11 +71,12 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     _web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
     web_client = TestClient(_web.app)
 
-    data_message = {"user_id": "test123", "text": "Hi!"}
+    data_message = {"user_id": "test123", "text": "Hi!", "project_id": "test"}
     response = web_client.post("/message_text", json=data_message)
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["text"] == out_node.value
+    assert response.json()[0]["project_name"] == data_message["project_id"]
 
     assert len(listener.events) == 2
     assert isinstance(listener.events[0], InEvent)

@@ -9,7 +9,6 @@ from src.domain.model import DataExtract
 from src.domain.model import EditMessage
 from src.domain.model import GetVariable
 from src.domain.model import InEvent
-from src.domain.model import InIntent
 from src.domain.model import InMessage
 from src.domain.model import LogicalUnit
 from src.domain.model import MatchText
@@ -20,38 +19,20 @@ from src.domain.model import RemoteRequest
 from src.domain.model import Scenario
 from src.domain.model import SetVariable
 from src.domain.model import User
-
-
-class FakeScenarioGetter:
-    def __init__(self, scenarios: tp.Dict[str, Scenario]) -> None:
-        self.scenarios = scenarios
-
-    async def find(self, name: str) -> Scenario:
-        return self.scenarios[name]
+from tests.conftest import FakeScenarioGetter
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scenarios", [["default", "intent_scenario", "matchtext_scenario"]]
+)
 async def test_start_matchtext_scenario(
-    matchtext_scenario: Scenario, intent_scenario: Scenario, mock_scenario: Scenario
+    prepared_ep: tp.Tuple[EventProcessor, FakeScenarioGetter],
+    matchtext_scenario: Scenario,
 ) -> None:
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            intent_scenario.name: intent_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
-
+    ep, fake_sg = prepared_ep
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -64,29 +45,17 @@ async def test_start_matchtext_scenario(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scenarios", [["default", "intent_scenario", "matchtext_scenario_with_or"]]
+)
 async def test_start_matchtext_scenario_with_or(
+    prepared_ep: tp.Tuple[EventProcessor, FakeScenarioGetter],
     matchtext_scenario_with_or: Scenario,
-    intent_scenario: Scenario,
-    mock_scenario: Scenario,
 ) -> None:
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            intent_scenario.name: intent_scenario,
-            matchtext_scenario_with_or.name: matchtext_scenario_with_or,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario_with_or.name: {"intents": [], "phrases": ["not start"]},
-            intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+    ep, fake_sg = prepared_ep
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="not start")
+    in_event = InEvent(user=user, text="not start", project_name="test_project")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -99,28 +68,21 @@ async def test_start_matchtext_scenario_with_or(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scenarios", [["default", "intent_scenario", "matchtext_scenario"]]
+)
 async def test_start_intent_scenario(
-    matchtext_scenario: Scenario, intent_scenario: Scenario, mock_scenario: Scenario
+    prepared_ep: tp.Tuple[EventProcessor, FakeScenarioGetter],
+    intent_scenario: Scenario,
 ) -> None:
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            intent_scenario.name: intent_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+    ep, fake_sg = prepared_ep
 
     user = User(outer_id="1")
     in_event = InEvent(
-        user=user, intent="test_intent", text="phrase for triggered intent"
+        user=user,
+        intent="test_intent",
+        text="phrase for triggered intent",
+        project_name="test_project",
     )
     ctx: tp.Dict[str, str] = {}
 
@@ -134,30 +96,21 @@ async def test_start_intent_scenario(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scenarios", [["default", "intent_scenario_with_or", "matchtext_scenario"]]
+)
 async def test_start_intent_scenario_with_or(
-    matchtext_scenario: Scenario,
+    prepared_ep: tp.Tuple[EventProcessor, FakeScenarioGetter],
     intent_scenario_with_or: Scenario,
-    mock_scenario: Scenario,
 ) -> None:
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            intent_scenario_with_or.name: intent_scenario_with_or,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            intent_scenario_with_or.name: {"intents": ["test_intent2"], "phrases": []},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+    ep, fake_sg = prepared_ep
 
     user = User(outer_id="1")
     in_event = InEvent(
-        user=user, intent="test_intent2", text="phrase for triggered intent"
+        user=user,
+        intent="test_intent2",
+        text="phrase for triggered intent",
+        project_name="test_project",
     )
     ctx: tp.Dict[str, str] = {}
 
@@ -171,27 +124,18 @@ async def test_start_intent_scenario_with_or(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scenarios", [["default", "intent_scenario", "matchtext_scenario"]]
+)
 async def test_start_default_scenario(
-    matchtext_scenario: Scenario, intent_scenario: Scenario, mock_scenario: Scenario
+    prepared_ep: tp.Tuple[EventProcessor, FakeScenarioGetter], mock_scenario: Scenario
 ) -> None:
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            intent_scenario.name: intent_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+    ep, fake_sg = prepared_ep
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, intent="habahaba", text="habahaba")
+    in_event = InEvent(
+        user=user, intent="habahaba", text="habahaba", project_name="test_project"
+    )
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -204,41 +148,31 @@ async def test_start_default_scenario(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scenarios",
+    [
+        [
+            "default",
+            "intent_scenario",
+            "matchtext_scenario",
+            "another_matchtext_scenario",
+            "another_intent_scenario",
+        ]
+    ],
+)
 async def test_start_scenario_with_several_intent_scenarios(
-    matchtext_scenario: Scenario,
-    another_matchtext_scenario: Scenario,
-    intent_scenario: Scenario,
+    prepared_ep: tp.Tuple[EventProcessor, FakeScenarioGetter],
     another_intent_scenario: Scenario,
-    mock_scenario: Scenario,
 ) -> None:
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            intent_scenario.name: intent_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-            another_intent_scenario.name: another_intent_scenario,
-            another_matchtext_scenario.name: another_matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
-            another_matchtext_scenario.name: {
-                "intents": [],
-                "phrases": ["another start"],
-            },
-            another_intent_scenario.name: {
-                "intents": ["another_test_intent"],
-                "phrases": [],
-            },
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+    ep, fake_sg = prepared_ep
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, intent="another_test_intent", text="habahaba")
+    in_event = InEvent(
+        user=user,
+        intent="another_test_intent",
+        text="habahaba",
+        project_name="test_project",
+    )
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -251,41 +185,28 @@ async def test_start_scenario_with_several_intent_scenarios(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scenarios",
+    [
+        [
+            "default",
+            "intent_scenario",
+            "matchtext_scenario",
+            "another_matchtext_scenario",
+            "another_intent_scenario",
+        ]
+    ],
+)
 async def test_start_scenario_with_several_matchtext_scenarios(
-    matchtext_scenario: Scenario,
+    prepared_ep: tp.Tuple[EventProcessor, FakeScenarioGetter],
     another_matchtext_scenario: Scenario,
-    intent_scenario: Scenario,
-    another_intent_scenario: Scenario,
-    mock_scenario: Scenario,
 ) -> None:
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            intent_scenario.name: intent_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-            another_intent_scenario.name: another_intent_scenario,
-            another_matchtext_scenario.name: another_matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            intent_scenario.name: {"intents": ["test_intent"], "phrases": []},
-            another_matchtext_scenario.name: {
-                "intents": [],
-                "phrases": ["another start"],
-            },
-            another_intent_scenario.name: {
-                "intents": ["another_test_intent"],
-                "phrases": [],
-            },
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+    ep, fake_sg = prepared_ep
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, intent="", text="another start")
+    in_event = InEvent(
+        user=user, intent="", text="another start", project_name="test_project"
+    )
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -298,54 +219,27 @@ async def test_start_scenario_with_several_matchtext_scenarios(
 
 
 @pytest.mark.asyncio
-async def test_in_out_out(mock_scenario: Scenario) -> None:
-    matchtext_node = MatchText(
-        element_id="id_1",
-        value="start",
-        next_ids=["id_2"],
-        node_type=NodeType.matchText,
-    )
-    matchtext_out_node = OutMessage(
-        element_id="id_2",
-        value="TEXT_matchtext_scenario",
-        next_ids=["id_3"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node2 = OutMessage(
-        element_id="id_3",
-        value="TEXT_matchtext_scenario2",
-        next_ids=[],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_scenario = Scenario(
-        "matchtext_test",
-        "id_1",
-        {
-            "id_1": matchtext_node,
-            "id_2": matchtext_out_node,
-            "id_3": matchtext_out_node2,
-        },
-    )
-
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_matchtext_scenario", ["id_3"], ""],
+            ["outMessage", "id_3", "TEXT_matchtext_scenario2", [], ""],
+        ]
+    ],
+)
+async def test_in_out_out(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
 
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
@@ -356,218 +250,89 @@ async def test_in_out_out(mock_scenario: Scenario) -> None:
 
 
 @pytest.mark.asyncio
-async def test_in_out_in(mock_scenario: Scenario) -> None:
-    matchtext_node = MatchText(
-        element_id="id_1",
-        value="start",
-        next_ids=["id_2"],
-        node_type=NodeType.matchText,
-    )
-    matchtext_out_node = OutMessage(
-        element_id="id_2",
-        value="TEXT_matchtext_scenario",
-        next_ids=["id_3"],
-        node_type=NodeType.outMessage,
-    )
-    in_node = InMessage(
-        element_id="id_3",
-        value="",
-        next_ids=[],
-        node_type=NodeType.inMessage,
-    )
-    matchtext_scenario = Scenario(
-        "matchtext_test",
-        "id_1",
-        {
-            "id_1": matchtext_node,
-            "id_2": matchtext_out_node,
-            "id_3": in_node,
-        },
-    )
-
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_matchtext_scenario", ["id_3"], ""],
+            ["inMessage", "id_3", "", [], ""],
+        ]
+    ],
+)
+async def test_in_out_in(generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]) -> None:
+    ep, fake_sg = generate_scenario
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
 
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
-    assert user.current_node_id == in_node.element_id
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_3").element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
-async def test_in_out_out_in(mock_scenario: Scenario) -> None:
-    matchtext_node = MatchText(
-        element_id="id_1",
-        value="start",
-        next_ids=["id_2"],
-        node_type=NodeType.matchText,
-    )
-    matchtext_out_node = OutMessage(
-        element_id="id_2",
-        value="TEXT_matchtext_scenario",
-        next_ids=["id_3"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node2 = OutMessage(
-        element_id="id_3",
-        value="TEXT_matchtext_scenario2",
-        next_ids=["id_4"],
-        node_type=NodeType.outMessage,
-    )
-    in_node = InMessage(
-        element_id="id_4",
-        value="",
-        next_ids=[],
-        node_type=NodeType.inMessage,
-    )
-    matchtext_scenario = Scenario(
-        "matchtext_test",
-        "id_1",
-        {
-            "id_1": matchtext_node,
-            "id_2": matchtext_out_node,
-            "id_3": matchtext_out_node2,
-            "id_4": in_node,
-        },
-    )
-
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_matchtext_scenario", ["id_3"], ""],
+            ["outMessage", "id_3", "TEXT_matchtext_scenario2", ["id_4"], ""],
+            ["inMessage", "id_4", "", [], ""],
+        ]
+    ],
+)
+async def test_in_out_out_in(generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]) -> None:
+    ep, fake_sg = generate_scenario
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
 
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
     assert out_events[1].text == matchtext_scenario.get_node_by_id("id_3").value
-    assert user.current_node_id == in_node.element_id
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_4").element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
-async def test_in_out_x7_in(mock_scenario: Scenario) -> None:
-    matchtext_node = MatchText(
-        element_id="id_1",
-        value="start",
-        next_ids=["id_2"],
-        node_type=NodeType.matchText,
-    )
-    matchtext_out_node = OutMessage(
-        element_id="id_2",
-        value="TEXT_matchtext_scenario",
-        next_ids=["id_3"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node2 = OutMessage(
-        element_id="id_3",
-        value="TEXT_matchtext_scenario2",
-        next_ids=["id_4"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node3 = OutMessage(
-        element_id="id_4",
-        value="TEXT_matchtext_scenario3",
-        next_ids=["id_5"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node4 = OutMessage(
-        element_id="id_5",
-        value="TEXT_matchtext_scenario4",
-        next_ids=["id_6"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node5 = OutMessage(
-        element_id="id_6",
-        value="TEXT_matchtext_scenario5",
-        next_ids=["id_7"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node6 = OutMessage(
-        element_id="id_7",
-        value="TEXT_matchtext_scenario6",
-        next_ids=["id_8"],
-        node_type=NodeType.outMessage,
-    )
-    matchtext_out_node7 = OutMessage(
-        element_id="id_8",
-        value="TEXT_matchtext_scenario7",
-        next_ids=["id_9"],
-        node_type=NodeType.outMessage,
-    )
-    in_node = InMessage(
-        element_id="id_9",
-        value="",
-        next_ids=[],
-        node_type=NodeType.inMessage,
-    )
-    matchtext_scenario = Scenario(
-        "matchtext_test",
-        "id_1",
-        {
-            "id_1": matchtext_node,
-            "id_2": matchtext_out_node,
-            "id_3": matchtext_out_node2,
-            "id_4": matchtext_out_node3,
-            "id_5": matchtext_out_node4,
-            "id_6": matchtext_out_node5,
-            "id_7": matchtext_out_node6,
-            "id_8": matchtext_out_node7,
-            "id_9": in_node,
-        },
-    )
-
-    fake_sg = FakeScenarioGetter(
-        {
-            mock_scenario.name: mock_scenario,
-            matchtext_scenario.name: matchtext_scenario,
-        }
-    )
-    ep = EventProcessor(
-        scenarios={
-            matchtext_scenario.name: {"intents": [], "phrases": ["start"]},
-            mock_scenario.name: {"intents": [], "phrases": []},
-        },
-        default_scenario_name=mock_scenario.name,
-    )
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_matchtext_scenario", ["id_3"], ""],
+            ["outMessage", "id_3", "TEXT_matchtext_scenario2", ["id_4"], ""],
+            ["outMessage", "id_4", "TEXT_matchtext_scenario3", ["id_5"], ""],
+            ["outMessage", "id_5", "TEXT_matchtext_scenario4", ["id_6"], ""],
+            ["outMessage", "id_6", "TEXT_matchtext_scenario5", ["id_7"], ""],
+            ["outMessage", "id_7", "TEXT_matchtext_scenario6", ["id_8"], ""],
+            ["outMessage", "id_8", "TEXT_matchtext_scenario7", ["id_9"], ""],
+            ["inMessage", "id_9", "", [], ""],
+        ]
+    ],
+)
+async def test_in_out_x7_in(generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]) -> None:
+    ep, fake_sg = generate_scenario
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
 
     assert len(out_events) == 7
     assert isinstance(out_events[0], OutEvent)
@@ -584,7 +349,7 @@ async def test_in_out_x7_in(mock_scenario: Scenario) -> None:
     assert out_events[4].text == matchtext_scenario.get_node_by_id("id_6").value
     assert out_events[5].text == matchtext_scenario.get_node_by_id("id_7").value
     assert out_events[6].text == matchtext_scenario.get_node_by_id("id_8").value
-    assert user.current_node_id == in_node.element_id
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_9").element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
 
@@ -640,7 +405,7 @@ async def test_in_out_in_out(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -651,7 +416,7 @@ async def test_in_out_in_out(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event = InEvent(user=user, text="Some blah blah")
+    in_event = InEvent(user=user, text="Some blah blah", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
 
     assert len(out_events) == 1
@@ -708,7 +473,7 @@ async def test_in_out_buttons_out(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -781,7 +546,7 @@ async def test_in_out_buttons_out_in(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -854,7 +619,7 @@ async def test_in_out_buttons_out_in_button_out(mock_scenario: Scenario) -> None
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -872,7 +637,9 @@ async def test_in_out_buttons_out_in_button_out(mock_scenario: Scenario) -> None
     assert user.current_node_id == matchtext_out_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event = InEvent(user=user, text="", button_pushed_next="id_4")
+    in_event = InEvent(
+        user=user, text="", button_pushed_next="id_4", project_name="test"
+    )
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -936,7 +703,7 @@ async def test_double_click(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -950,7 +717,7 @@ async def test_double_click(mock_scenario: Scenario) -> None:
     assert user.current_node_id == matchtext_out_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event2 = InEvent(user=user, button_pushed_next="id_3")
+    in_event2 = InEvent(user=user, button_pushed_next="id_3", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -962,7 +729,7 @@ async def test_double_click(mock_scenario: Scenario) -> None:
     assert user.current_node_id == matchtext_out_node2.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event3 = InEvent(user=user, button_pushed_next="id_4")
+    in_event3 = InEvent(user=user, button_pushed_next="id_4", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event3, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1071,7 +838,7 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    start_in_event = InEvent(user=user, text="start")
+    start_in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
@@ -1081,7 +848,7 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event2 = InEvent(user=user, text="нетнетнет")
+    in_event2 = InEvent(user=user, text="нетнетнет", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1097,7 +864,7 @@ async def test_logical_unit_not(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event2 = InEvent(user=user, text="да")
+    in_event2 = InEvent(user=user, text="да", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1193,7 +960,7 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    start_in_event = InEvent(user=user, text="start")
+    start_in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
@@ -1203,7 +970,7 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event2 = InEvent(user=user, text="нетнетнет")
+    in_event2 = InEvent(user=user, text="нетнетнет", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1219,7 +986,7 @@ async def test_logical_unit_and(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event2 = InEvent(user=user, text="да")
+    in_event2 = InEvent(user=user, text="да", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1301,7 +1068,7 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    start_in_event = InEvent(user=user, text="start")
+    start_in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
@@ -1311,7 +1078,9 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event = InEvent(user=user, text="не хочу заканчивать сценарий")
+    in_event = InEvent(
+        user=user, text="не хочу заканчивать сценарий", project_name="test"
+    )
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1319,7 +1088,7 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event = InEvent(user=user, text="все равно не хочу")
+    in_event = InEvent(user=user, text="все равно не хочу", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1327,7 +1096,7 @@ async def test_cycle_until_done(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event = InEvent(user=user, text="да")
+    in_event = InEvent(user=user, text="да", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
@@ -1395,7 +1164,7 @@ async def test_set_variable(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {"old_var": "some_text"}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -1405,7 +1174,7 @@ async def test_set_variable(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event = InEvent(user=user, text="Hi!")
+    in_event = InEvent(user=user, text="Hi!", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 2
     assert new_ctx["old_var"] == "some_text"
@@ -1476,7 +1245,7 @@ async def test_set_variable_update(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {"old_var": "some_text"}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -1486,7 +1255,7 @@ async def test_set_variable_update(mock_scenario: Scenario) -> None:
     assert user.current_node_id == in_node.element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
-    in_event = InEvent(user=user, text="Hi!")
+    in_event = InEvent(user=user, text="Hi!", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 1
     assert new_ctx["old_var"] == in_event.text
@@ -1570,7 +1339,7 @@ async def test_get_variable(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {"old_var": "some_text"}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -1692,7 +1461,7 @@ async def test_edit_message(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -1765,7 +1534,7 @@ async def test_edit_message_and_final_node(mock_scenario: Scenario) -> None:
     )
 
     user = User(outer_id="1")
-    in_event = InEvent(user=user, text="start")
+    in_event = InEvent(user=user, text="start", project_name="test")
     ctx: tp.Dict[str, str] = {}
 
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
@@ -1781,7 +1550,7 @@ async def test_edit_message_and_final_node(mock_scenario: Scenario) -> None:
     assert out_events[0].buttons[1].text == buttons[1][0]
     assert out_events[0].buttons[1].callback_data == buttons[1][1]
 
-    in_event2 = InEvent(user=user, button_pushed_next="id_3")
+    in_event2 = InEvent(user=user, button_pushed_next="id_3", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 2
     assert isinstance(out_events[0], OutEvent)
@@ -1796,7 +1565,7 @@ async def test_edit_message_and_final_node(mock_scenario: Scenario) -> None:
     out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
     assert len(out_events) == 1
 
-    in_event2 = InEvent(user=user, button_pushed_next="id_4")
+    in_event2 = InEvent(user=user, button_pushed_next="id_4", project_name="test")
     out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)

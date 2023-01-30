@@ -22,10 +22,11 @@ class Sender(ABC):
 
 
 class TgSender(Sender):
-    def __init__(self, bot: aiogram.Bot) -> None:
+    def __init__(self, bot: aiogram.Bot, project_name: str) -> None:
         """Initialize of sender"""
         super().__init__()
         self.bot = bot
+        self.project_name = project_name
 
     @staticmethod
     async def _search_linked_message(

@@ -120,7 +120,7 @@ class XMLParser(Parser):
 
 
 def main() -> None:
-    xml_src_path = "../scenarios/weather_demo/scenario.xml"
+    xml_src_path = "../scenarios/demo/weather_demo/scenario.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
     print(len(nodes))
