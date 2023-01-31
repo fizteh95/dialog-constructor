@@ -27,8 +27,16 @@ async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
     for item in tree:
         if "__pycache__" not in item[0]:
             paths.append(item)
-    scenario_names = paths[0][1]
-    scenario_names = [x for x in scenario_names if x != "__pycache__"]
+            print(item)
+    print("*****")
+    projects = paths[0][1]
+    projects = [x for x in projects if x != "__pycache__"]
+    print(projects)
+
+    for project in projects:
+        print("WIP")
+
+    raise
     for i, name in enumerate(scenario_names):
         scenario_files = paths[i + 1][2]
         if "scenario.py" in scenario_files:
@@ -74,6 +82,7 @@ async def bootstrap(
     concrete_repo = repo()
     parser = XMLParser()
     await upload_scenarios_to_repo(repo=concrete_repo, parser=parser)
+    raise
 
     mock_scenario = await concrete_repo.get_scenario_by_name("default")
     concrete_ep = ep(

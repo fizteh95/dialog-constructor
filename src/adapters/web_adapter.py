@@ -35,18 +35,28 @@ class WebAdapter(AbstractWebAdapter):
     async def process_templating(self, event: OutEvent) -> OutEvent:
         template_name = event.text
         scenario_name = event.scenario_name
-        template = await self.repo.get_scenario_text(
-            scenario_name=scenario_name, template_name=template_name
-        )
+        if event.project_name is not None:
+            template = await self.repo.get_scenario_text(
+                scenario_name=scenario_name,
+                template_name=template_name,
+                project_name=event.project_name,
+            )
+        else:
+            template = event.text
         ctx = await self.repo.get_user_context(event.user)
         jinja_template = j2.Template(template)
         event.text = jinja_template.render(ctx)
         if event.buttons is not None:
             for b in event.buttons:
                 template_name = b.text
-                template = await self.repo.get_scenario_text(
-                    scenario_name=scenario_name, template_name=template_name
-                )
+                if event.project_name is not None:
+                    template = await self.repo.get_scenario_text(
+                        scenario_name=scenario_name,
+                        template_name=template_name,
+                        project_name=event.project_name,
+                    )
+                else:
+                    template = b.text
                 jinja_template = j2.Template(template)
                 b.text = jinja_template.render(ctx)
         return event
@@ -58,7 +68,7 @@ class WebAdapter(AbstractWebAdapter):
         user_outer_id = unparsed_event["user_id"]
         text = unparsed_event["text"]
         project_id = unparsed_event["project_id"]
-        # TODO
+        # TODO: здесь должен происходить матчинг айдишника и имени проекта
         user = await self.repo.get_or_create_user(outer_id=user_outer_id)
         message = InEvent(
             user=user, text=text, to_process=False, project_name=project_id
@@ -71,5 +81,6 @@ class WebAdapter(AbstractWebAdapter):
             e.to_process = False
             await self.bus.public_message(message=e)
             new_events.append(templated_event)
+        # TODO: здесь приводим к нужному формату ответа
         transformed_events = [x.__dict__ for x in new_events]
         return transformed_events

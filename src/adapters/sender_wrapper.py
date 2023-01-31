@@ -42,18 +42,28 @@ class SenderWrapper(AbstractSenderWrapper):
     async def process_templating(self, event: OutEvent) -> OutEvent:
         template_name = event.text
         scenario_name = event.scenario_name
-        template = await self.repo.get_scenario_text(
-            scenario_name=scenario_name, template_name=template_name
-        )
+        if event.project_name is not None:
+            template = await self.repo.get_scenario_text(
+                scenario_name=scenario_name,
+                template_name=template_name,
+                project_name=event.project_name,
+            )
+        else:
+            template = event.text
         ctx = await self.repo.get_user_context(event.user)
         jinja_template = j2.Template(template)
         event.text = jinja_template.render(ctx)
         if event.buttons is not None:
             for b in event.buttons:
                 template_name = b.text
-                template = await self.repo.get_scenario_text(
-                    scenario_name=scenario_name, template_name=template_name
-                )
+                if event.project_name is not None:
+                    template = await self.repo.get_scenario_text(
+                        scenario_name=scenario_name,
+                        template_name=template_name,
+                        project_name=event.project_name,
+                    )
+                else:
+                    template = b.text
                 jinja_template = j2.Template(template)
                 b.text = jinja_template.render(ctx)
         return event

@@ -60,10 +60,6 @@ class AbstractRepo(ABC):
     ) -> str:
         """Return template value"""
 
-    # @abstractmethod
-    # async def get_all_scenario_names(self) -> tp.List[str]:
-    #     """Return all scenario names"""
-
     @abstractmethod
     async def create_project(self, name: str) -> None:
         """Create project in db"""
@@ -180,10 +176,6 @@ class InMemoryRepo(AbstractRepo):
             print(f"Error, template {template_name} not found")
             return template_name
         raise Exception("Scenario was not found")
-
-    # async def get_all_scenario_names(self) -> tp.List[str]:
-    #     """Return all scenario names"""
-    #     return list(self.scenarios.keys())
 
     async def create_project(self, name: str) -> None:
         """Create project in db"""

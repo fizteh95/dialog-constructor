@@ -52,14 +52,18 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     test_scenario = Scenario("test", "id_1", {"id_1": in_node, "id_2": out_node})
 
     repo = InMemoryRepo()
-    await repo.add_scenario(mock_scenario)
-    await repo.add_scenario(test_scenario)
+    await repo.create_project("test_project")
+    await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
+    await repo.add_scenario(scenario=test_scenario, project_name="test_project")
 
-    ep = EventProcessor(
-        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
-    )
+    ep = EventProcessor()
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
-    await wrapped_ep.add_scenario(test_scenario.name)
+    await wrapped_ep.add_scenario(
+        scenario_name=test_scenario.name, project_name="test_project"
+    )
+    await wrapped_ep.add_scenario(
+        scenario_name=mock_scenario.name, project_name="test_project"
+    )
 
     listener = FakeListener()
 
@@ -71,7 +75,7 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     _web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
     web_client = TestClient(_web.app)
 
-    data_message = {"user_id": "test123", "text": "Hi!", "project_id": "test"}
+    data_message = {"user_id": "test123", "text": "Hi!", "project_id": "test_project"}
     response = web_client.post("/message_text", json=data_message)
     assert response.status_code == 200
     assert len(response.json()) == 1
