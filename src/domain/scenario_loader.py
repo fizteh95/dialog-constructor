@@ -6,15 +6,8 @@ from abc import ABC
 from abc import abstractmethod
 from collections import defaultdict
 
-from src.domain.model import DataExtract
-from src.domain.model import EditMessage
 from src.domain.model import ExecuteNode
-from src.domain.model import InMessage
-from src.domain.model import LogicalUnit
 from src.domain.model import NodeType
-from src.domain.model import OutMessage
-from src.domain.model import RemoteRequest
-from src.domain.model import SetVariable
 from src.domain.model import class_dict
 
 
@@ -26,7 +19,7 @@ class Parser(ABC):
 
     @abstractmethod
     def parse(self, input_stuff: tp.Any) -> tp.Tuple[str, tp.List[ExecuteNode]]:
-        raise
+        """Parsing input stuff"""
 
 
 class XMLParser(Parser):
@@ -51,8 +44,8 @@ class XMLParser(Parser):
                 return k
         raise
 
-    def parse(self, src_path: str) -> tp.Tuple[str, tp.List[ExecuteNode]]:
-        tree = et.parse(src_path)
+    def parse(self, input_stuff: tp.Any) -> tp.Tuple[str, tp.List[ExecuteNode]]:
+        tree = et.parse(input_stuff)
 
         parent_id = "WIyWlLk6GJQsqaUBKTNV-1"
         nodes = tree.findall(f".//mxCell[@parent='{parent_id}']")
@@ -127,7 +120,7 @@ class XMLParser(Parser):
 
 
 def main() -> None:
-    xml_src_path = "../resources/weather-demo.xml"
+    xml_src_path = "../scenarios/demo/weather_demo/scenario.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
     print(len(nodes))

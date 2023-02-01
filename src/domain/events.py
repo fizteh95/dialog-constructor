@@ -1,5 +1,6 @@
 import copy
 import typing as tp
+from collections import defaultdict
 
 from src.domain.model import Event
 from src.domain.model import InEvent
@@ -11,28 +12,38 @@ from src.domain.model import Scenario
 class EventProcessor:
     """
     Превращает входящие события в исходящие по сценарию
-    По интентам - неинтентам:
     """
 
-    def __init__(
-        self,
-        scenarios: tp.Dict[str, tp.Dict[str, tp.List[str]]],
-        default_scenario_name: str,
-    ) -> None:
+    def __init__(self) -> None:
         """
         Инициализация event processor'а
-        :param scenarios: {имя_сценария: {"intents": ["реквизиты"], "phrases": []}, имя_сценария2: {...}, ...}
-        :param default_scenario_name: имя сценария по умолчанию
         """
-        self.scenarios = scenarios
-        self.default_scenario_name = default_scenario_name
-        if self.default_scenario_name not in self.scenarios:
-            raise Exception("No scenario with default name in scenarios")
+        self.projects: tp.Dict[
+            str, tp.Dict[str, tp.Dict[str, tp.List[str]]]
+        ] = defaultdict(dict)
+        """
+        {
+            "project_name1":
+            {
+                "first scenario name": {"intents": ["first intent"], "phrases": []},
+                "second scenario": {...},
+                "default": {"intents": [], "phrases": []}
+            },
+            "project_name2": {...}
+        }
+        """
 
     def add_scenario(
-        self, scenario: Scenario, intents: tp.List[str], phrases: tp.List[str]
+        self,
+        scenario_name: str,
+        project_name: str,
+        intents: tp.List[str],
+        phrases: tp.List[str],
     ) -> None:
-        self.scenarios[scenario.name] = {"intents": intents, "phrases": phrases}
+        self.projects[project_name][scenario_name] = {
+            "intents": intents,
+            "phrases": phrases,
+        }
 
     async def check_scenario_start(
         self, scenario: Scenario, event: InEvent
@@ -40,7 +51,7 @@ class EventProcessor:
         """
         Проверка запустится ли этот сценарий, то есть это проверка самого начала сценария
         Для четкой фразы допускается или одна фраза, или несколько соединенных ИЛИ
-        Для интентов допускаются все логические операции
+        Для интентов допускаются или одно название, или несколько соединенных ИЛИ
         :param scenario: сценарий
         :param event: событие
         :return: айдишники нод для последующего пути
@@ -92,7 +103,7 @@ class EventProcessor:
         self,
         event: InEvent,
         ctx: tp.Dict[str, str],
-        scenario_getter: tp.Callable[[str], tp.Awaitable[Scenario]],
+        scenario_getter: tp.Callable[[str, str], tp.Awaitable[Scenario]],
     ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str]]:
         """
         Ветвление исполнения только в логических блоках, иначе только один потомок
@@ -106,7 +117,9 @@ class EventProcessor:
         current_scenario_name = user.current_scenario_name
         current_node_id = user.current_node_id
         if current_scenario_name and current_node_id:
-            current_scenario = await scenario_getter(current_scenario_name)
+            current_scenario = await scenario_getter(
+                current_scenario_name, event.project_name
+            )
             current_node = current_scenario.get_node_by_id(current_node_id)
             nodes_id = current_node.next_ids
         elif current_node_id and not current_scenario_name:
@@ -115,12 +128,12 @@ class EventProcessor:
             # никакой сценарий еще не начат
             if not event.text and not event.intent:
                 raise Exception("Couldnt start scenario without text and intent")
-            for name, start_dict in self.scenarios.items():
+            for name, start_dict in self.projects[event.project_name].items():
                 if (
                     event.text in start_dict["phrases"]
                     or event.intent in start_dict["intents"]
                 ):
-                    scenario = await scenario_getter(name)
+                    scenario = await scenario_getter(name, event.project_name)
                     nodes_id = await self.check_scenario_start(
                         scenario=scenario, event=event
                     )
@@ -129,7 +142,7 @@ class EventProcessor:
                         user.current_scenario_name = current_scenario.name
                         break
             else:
-                current_scenario = await scenario_getter(self.default_scenario_name)
+                current_scenario = await scenario_getter("default", event.project_name)
                 user.current_scenario_name = current_scenario.name
                 current_node = current_scenario.get_node_by_id(current_scenario.root_id)
                 nodes_id = current_node.next_ids

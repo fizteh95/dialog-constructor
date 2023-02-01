@@ -13,10 +13,12 @@ class Poller(ABC):
         self,
         message_handler: tp.Callable[[InEvent], tp.Awaitable[None]],
         user_finder: tp.Callable[[tp.Dict[str, str]], tp.Awaitable[User]],
+        project_name: str,
     ) -> None:
         """Initialize of entrypoints"""
         self.message_handler = message_handler
         self.user_finder = user_finder
+        self.project_name = project_name
 
     @abstractmethod
     async def poll(self) -> None:
@@ -28,10 +30,11 @@ class TgPoller(Poller):
         self,
         message_handler: tp.Callable[[InEvent], tp.Awaitable[None]],
         user_finder: tp.Callable[[tp.Dict[str, str]], tp.Awaitable[User]],
+        project_name: str,
         bot: aiogram.Bot,
     ) -> None:
         """Initialize of entrypoints"""
-        super().__init__(message_handler, user_finder)
+        super().__init__(message_handler, user_finder, project_name)
         self.bot = bot
         self.dp = aiogram.Dispatcher(self.bot)
         self.dp.register_message_handler(self.process_message)
@@ -53,7 +56,7 @@ class TgPoller(Poller):
                 surname=tg_message.from_user.last_name,
             )
         )
-        message = InEvent(user=user, text=text)
+        message = InEvent(user=user, text=text, project_name=self.project_name)
         await self.message_handler(message)
 
     async def process_button_push(
@@ -77,7 +80,9 @@ class TgPoller(Poller):
                 surname=query.from_user.last_name,
             )
         )
-        message = InEvent(user=user, button_pushed_next=pushed_button)
+        message = InEvent(
+            user=user, button_pushed_next=pushed_button, project_name=self.project_name
+        )
         await self.message_handler(message)
 
     async def poll(self) -> None:
