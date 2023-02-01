@@ -64,6 +64,10 @@ class AbstractRepo(ABC):
     async def create_project(self, name: str) -> None:
         """Create project in db"""
 
+    @abstractmethod
+    async def get_all_scenarios_metadata(self) -> tp.List[tp.Tuple[str, str]]:
+        """Get all scenarios names and projects"""
+
 
 class InMemoryRepo(AbstractRepo):
     def __init__(self) -> None:
@@ -179,4 +183,13 @@ class InMemoryRepo(AbstractRepo):
 
     async def create_project(self, name: str) -> None:
         """Create project in db"""
-        self.projects[name] = []
+        if name not in self.projects:
+            self.projects[name] = []
+
+    async def get_all_scenarios_metadata(self) -> tp.List[tp.Tuple[str, str]]:
+        """Get all scenarios names and projects"""
+        res = []
+        for project, scenarios in self.projects.items():
+            for scenario in scenarios:
+                res.append((project, scenario["name"], ))
+        return res

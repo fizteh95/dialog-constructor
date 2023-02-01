@@ -19,7 +19,7 @@ class Parser(ABC):
 
     @abstractmethod
     def parse(self, input_stuff: tp.Any) -> tp.Tuple[str, tp.List[ExecuteNode]]:
-        raise
+        """Parsing input stuff"""
 
 
 class XMLParser(Parser):
@@ -44,8 +44,8 @@ class XMLParser(Parser):
                 return k
         raise
 
-    def parse(self, src_path: str) -> tp.Tuple[str, tp.List[ExecuteNode]]:
-        tree = et.parse(src_path)
+    def parse(self, input_stuff: tp.Any) -> tp.Tuple[str, tp.List[ExecuteNode]]:
+        tree = et.parse(input_stuff)
 
         parent_id = "WIyWlLk6GJQsqaUBKTNV-1"
         nodes = tree.findall(f".//mxCell[@parent='{parent_id}']")

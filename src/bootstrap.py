@@ -27,43 +27,53 @@ async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
     for item in tree:
         if "__pycache__" not in item[0]:
             paths.append(item)
-            print(item)
-    print("*****")
+
     projects = paths[0][1]
     projects = [x for x in projects if x != "__pycache__"]
     print(projects)
 
     for project in projects:
-        print("WIP")
+        await repo.create_project(project)
+        tree = os.walk(f"./src/scenarios/{project}")
+        for item in tree:
+            scenario_paths = item[1]
+            for scenario in scenario_paths:
+                print(scenario)
+                tree = os.walk(f"./src/scenarios/{project}/{scenario}")
+                for stage in tree:
+                    scenario_files = stage[2]
+                    print(scenario_files)
 
-    raise
-    for i, name in enumerate(scenario_names):
-        scenario_files = paths[i + 1][2]
-        if "scenario.py" in scenario_files:
-            make_scenario_file = importlib.import_module(
-                f"src.scenarios.{name}.scenario"
-            )
-            scenario = make_scenario_file.make_scenario()
-        elif "scenario.xml" in scenario_files:
-            root_id, nodes = parser.parse(
-                src_path=f"./src/scenarios/{name}/scenario.xml"
-            )
-            parsed_nodes = {x.element_id: x for x in nodes}
-            scenario = Scenario(name=name, root_id=root_id, nodes=parsed_nodes)
-        else:
-            continue
-        with open(f"./src/scenarios/{name}/text_templates.json", "r") as f:
-            text_dict = json.load(f)
-        await repo.add_scenario(scenario=scenario)
-        await repo.add_scenario_texts(scenario_name=scenario.name, texts=text_dict)
+                    if "scenario.py" in scenario_files:
+                        make_scenario_file = importlib.import_module(
+                            f"src.scenarios.{project}.{scenario}.scenario"
+                        )
+                        created_scenario = make_scenario_file.make_scenario()
+                    elif "scenario.xml" in scenario_files:
+                        root_id, nodes = parser.parse(
+                            input_stuff=f"./src/scenarios/{project}/{scenario}/scenario.xml"
+                        )
+                        parsed_nodes = {x.element_id: x for x in nodes}
+                        created_scenario = Scenario(name=scenario, root_id=root_id, nodes=parsed_nodes)
+                    else:
+                        continue
+                    with open(f"./src/scenarios/{project}/{scenario}/text_templates.json", "r") as f:
+                        text_dict = json.load(f)
+                    await repo.add_scenario(scenario=created_scenario, project_name=project)
+                    await repo.add_scenario_texts(scenario_name=scenario, project_name=project, texts=text_dict)
+
+                    break
+                print("######")
+            break
+        print("*****")
 
 
 async def download_scenarios_to_ep(
     wrapped_ep: AbstractEPWrapper, repo: AbstractRepo
 ) -> None:
-    scenario_names = await repo.get_all_scenario_names()
-    for name in scenario_names:
-        await wrapped_ep.add_scenario(name)
+    scenarios = await repo.get_all_scenarios_metadata()
+    for project, name in scenarios:
+        await wrapped_ep.add_scenario(scenario_name=name, project_name=project)
 
 
 async def bootstrap(
@@ -82,12 +92,7 @@ async def bootstrap(
     concrete_repo = repo()
     parser = XMLParser()
     await upload_scenarios_to_repo(repo=concrete_repo, parser=parser)
-    raise
-
-    mock_scenario = await concrete_repo.get_scenario_by_name("default")
-    concrete_ep = ep(
-        {mock_scenario.name: {"intents": [], "phrases": []}}, mock_scenario.name
-    )
+    concrete_ep = ep()
     wrapped_ep = ep_wrapper(event_processor=concrete_ep, repo=concrete_repo)
     await download_scenarios_to_ep(wrapped_ep=wrapped_ep, repo=concrete_repo)
 
@@ -107,7 +112,7 @@ async def bootstrap(
         bot = Bot(token="5023614422:AAEIwysH_RgMug_GpVV8b3ZpEw4kVnRL3IU")
 
     if sender is not None and sender_wrapper is not None:
-        concrete_sender = sender(bot=bot, project_name="test")
+        concrete_sender = sender(bot=bot, project_name="demo")
         wrapped_sender = sender_wrapper(sender=concrete_sender, repo=concrete_repo)
         concrete_bus.register(wrapped_sender)
 
@@ -117,7 +122,7 @@ async def bootstrap(
             message_handler=concrete_poller_adapter.message_handler,
             user_finder=concrete_poller_adapter.user_finder,
             bot=bot,
-            project_name="test",
+            project_name="demo",
         )
 
     if poller is not None and poller_adapter is not None:
