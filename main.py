@@ -1,5 +1,6 @@
 import asyncio
 
+from src.adapters.alchemy.repository import main_repo
 from src.adapters.ep_wrapper import EPWrapper
 from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
@@ -14,19 +15,20 @@ from src.service_layer.sender import TgSender
 
 
 async def main() -> None:
-    init_app = await bootstrap(
-        repo=InMemoryRepo,
-        ep=EventProcessor,
-        ep_wrapper=EPWrapper,
-        bus=ConcreteMessageBus,
-        web=Web,
-        web_adapter=WebAdapter,
-        poller=TgPoller,
-        poller_adapter=PollerAdapter,
-        sender=TgSender,
-        sender_wrapper=SenderWrapper,
-    )
-    await init_app
+    # init_app = await bootstrap(
+    #     repo=InMemoryRepo,
+    #     ep=EventProcessor,
+    #     ep_wrapper=EPWrapper,
+    #     bus=ConcreteMessageBus,
+    #     web=Web,
+    #     web_adapter=WebAdapter,
+    #     poller=TgPoller,
+    #     poller_adapter=PollerAdapter,
+    #     sender=TgSender,
+    #     sender_wrapper=SenderWrapper,
+    # )
+    # await init_app
+    await main_repo()
 
 
 if __name__ == "__main__":

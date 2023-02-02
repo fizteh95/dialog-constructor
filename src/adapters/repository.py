@@ -191,5 +191,10 @@ class InMemoryRepo(AbstractRepo):
         res = []
         for project, scenarios in self.projects.items():
             for scenario in scenarios:
-                res.append((project, scenario["name"], ))
+                res.append(
+                    (
+                        project,
+                        scenario["name"],
+                    )
+                )
         return res

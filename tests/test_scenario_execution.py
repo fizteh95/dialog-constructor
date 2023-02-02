@@ -248,6 +248,36 @@ async def test_in_out_out(
     [
         [
             ["matchText", "id_1", "start", ["id_2"], ""],
+            ["passNode", "id_2", "", ["id_3"], ""],
+            ["outMessage", "id_3", "TEXT_matchtext_scenario2", [], ""],
+        ]
+    ],
+)
+async def test_in_pass_out(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_3").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
             ["outMessage", "id_2", "TEXT_matchtext_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", [], ""],
         ]
@@ -686,6 +716,63 @@ async def test_logical_unit_not(
             ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", ["id_4"], ""],
             ["dataExtract", "id_4", "re(^[Дд]а$)", ["id_5"], ""],
+            ["logicalUnit", "id_5", "IF", ["id_6", "id_7"], ""],
+            ["outMessage", "id_6", "TEXT_scenario2", [], ""],
+            ["outMessage", "id_7", "TEXT_scenario3", [], ""],
+        ]
+    ],
+)
+async def test_logical_unit_if(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    start_in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {}
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_3").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event2 = InEvent(user=user, text="нетнетнет", project_name="test_project")
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_7").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+    # и еще раз, по другому пути
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_3").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event2 = InEvent(user=user, text="да", project_name="test_project")
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_6").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
+            ["inMessage", "id_3", "", ["id_4"], ""],
+            ["dataExtract", "id_4", "re(^[Дд]а$)", ["id_5"], ""],
             [
                 "remoteRequest",
                 "id_8",
@@ -836,6 +923,156 @@ async def test_set_variable(
     assert len(new_ctx) == 2
     assert new_ctx["old_var"] == "some_text"
     assert new_ctx["test_var1"] == in_event.text
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
+            ["inMessage", "id_3", "", ["id_4"], ""],
+            ["setVariable", "id_4", "user(test_var1)=1", ["id_5"], ""],
+            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+        ]
+    ],
+)
+async def test_set_variable_as_value(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {"old_var": "some_text"}
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_3").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event = InEvent(user=user, text="Hi!", project_name="test_project")
+    out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
+    assert len(new_ctx) == 2
+    assert new_ctx["old_var"] == "some_text"
+    assert new_ctx["test_var1"] == "1"
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
+            ["inMessage", "id_3", "", ["id_4"], ""],
+            ["setVariable", "id_4", "user(old_var)+=1", ["id_5"], ""],
+            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+        ]
+    ],
+)
+async def test_set_variable_as_plus(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {"old_var": "1"}
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+
+    in_event = InEvent(user=user, text="Hi!", project_name="test_project")
+    out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
+    assert len(new_ctx) == 1
+    assert new_ctx["old_var"] == "2"
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
+            ["inMessage", "id_3", "", ["id_4"], ""],
+            ["setVariable", "id_4", "user(old_var)-=1", ["id_5"], ""],
+            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+        ]
+    ],
+)
+async def test_set_variable_as_minus(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {"old_var": "10"}
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+
+    in_event = InEvent(user=user, text="Hi!", project_name="test_project")
+    out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
+    assert len(new_ctx) == 1
+    assert new_ctx["old_var"] == "9"
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
+            ["inMessage", "id_3", "", ["id_4"], ""],
+            ["setVariable", "id_4", "user(old_var)+= haba haba!", ["id_5"], ""],
+            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+        ]
+    ],
+)
+async def test_set_variable_as_plus_as_string(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {"old_var": "what?"}
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+
+    in_event = InEvent(user=user, text="Hi!", project_name="test_project")
+    out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
+    assert len(new_ctx) == 1
+    assert new_ctx["old_var"] == "what? haba haba!"
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value

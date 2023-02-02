@@ -74,6 +74,7 @@ class NodeType(Enum):
     remoteRequest = "remoteRequest"
     setVariable = "setVariable"
     getVariable = "getVariable"
+    passNode = "passNode"
     ...
 
 
@@ -120,6 +121,16 @@ class ExecuteNode(ABC):
             node_type=NodeType(kwargs_dict["node_type"]),
             buttons=[tuple(x) for x in kwargs_dict["buttons"]] if kwargs_dict["buttons"] is not None else None,  # type: ignore
         )
+
+
+class PassNode(ExecuteNode):
+    async def execute(
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        if in_text:
+            return [], {}, in_text
+        else:
+            return [], {}, ""
 
 
 class InIntent(ExecuteNode):
@@ -227,6 +238,11 @@ class LogicalUnit(ExecuteNode):
                 return [], {}, self.next_ids[1]
             else:
                 return [], {}, self.next_ids[0]
+        elif self.value == "IF":
+            if in_text:
+                return [], {}, self.next_ids[0]
+            else:
+                return [], {}, self.next_ids[1]
         elif self.value == "OR":
             if in_text is None:
                 raise ValueError("Logical unit AND must have string in input")
@@ -278,7 +294,37 @@ class SetVariable(ExecuteNode):
             in_text = ""
         var_type = self.value.split("(")[0]
         if var_type == "user":
-            return [], {var_name: in_text}, ""
+            if (
+                ("+" not in self.value)
+                and ("-" not in self.value)
+                and ("=" not in self.value)
+            ):
+                # установка в переменную того, что пришло из пайплайна
+                return [], {var_name: in_text}, ""
+            elif (
+                ("+" not in self.value)
+                and ("-" not in self.value)
+                and ("=" in self.value)
+            ):
+                # установка конкретного значения
+                value = self.value.split("=")[1]
+                return [], {var_name: str(value)}, ""
+            elif ("+=" in self.value) and ("-" not in self.value):
+                # сумма со вторым числом либо строкой
+                value = self.value.split("+=")[1]
+                try:
+                    new_value = int(ctx[var_name]) + int(value)
+                except ValueError:
+                    new_value = str(ctx[var_name]) + str(value)
+                return [], {var_name: str(new_value)}, ""
+            elif ("-=" in self.value) and ("+" not in self.value):
+                # разница со вторым числом либо строкой
+                value = self.value.split("-=")[1]
+                try:
+                    new_value = int(ctx[var_name]) - int(value)
+                except ValueError:
+                    new_value = str(ctx[var_name])[: -len(str(value))]
+                return [], {var_name: str(new_value)}, ""
         else:
             raise NotImplementedError("Such variable type not implemented")
 
@@ -309,6 +355,7 @@ class_dict = {
     "setVariable": SetVariable,
     "getVariable": GetVariable,
     "logicalUnit": LogicalUnit,
+    "passNode": PassNode,
 }
 
 
