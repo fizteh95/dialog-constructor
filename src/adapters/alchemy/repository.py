@@ -69,27 +69,22 @@ scenario_texts = sa.Table(
 )
 
 
-class SQLAlchemyRepo:  # (AbstractRepo)
+class SQLAlchemyRepo(AbstractRepo):
     def __init__(self) -> None:
         # self.engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
         self.engine = create_async_engine("postgresql+asyncpg://postgres:postgres@localhost/postgres", echo=True)
 
+    async def prepare_db(self) -> None:
+        await self.run_async_upgrade()
+
     @staticmethod
-    def run_upgrade(connection, cfg):
+    def run_upgrade(connection, cfg) -> None:  # type: ignore
         cfg.attributes["connection"] = connection
         command.upgrade(cfg, "head")
 
     async def run_async_upgrade(self) -> None:
         async with self.engine.begin() as conn:
             await conn.run_sync(self.run_upgrade, Config("alembic.ini"))
-
-    # @staticmethod
-    # def start_alembic_migrations() -> None:
-    #     try:
-    #         alembic_cfg = Config("alembic.ini")
-    #         command.upgrade(alembic_cfg, "head")
-    #     except Exception as e:
-    #         raise e
 
     async def _recreate_db(self) -> None:
         async with self.engine.begin() as conn:
@@ -171,12 +166,3 @@ class SQLAlchemyRepo:  # (AbstractRepo)
     async def get_all_scenarios_metadata(self) -> tp.List[tp.Tuple[str, str]]:
         """Get all scenarios names and projects"""
         ...
-
-
-async def main_repo() -> None:
-    r = SQLAlchemyRepo()
-    await r.run_async_upgrade()
-    # await r.test()
-
-
-# asyncio.run(main())

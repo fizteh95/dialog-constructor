@@ -10,6 +10,10 @@ from src.domain.model import User
 class AbstractRepo(ABC):
     # TODO: split repo for every model
 
+    @abstractmethod
+    async def prepare_db(self) -> None:
+        """Migrations, etc"""
+
     # User
     @abstractmethod
     async def get_or_create_user(self, **kwargs: tp.Any) -> User:
@@ -100,6 +104,9 @@ class InMemoryRepo(AbstractRepo):
             [...]
         }
         """
+
+    async def prepare_db(self) -> None:
+        pass
 
     async def get_or_create_user(self, **kwargs: tp.Any) -> User:
         """Get by outer_id or create user"""

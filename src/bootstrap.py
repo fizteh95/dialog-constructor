@@ -99,6 +99,7 @@ async def bootstrap(
 ) -> tp.Any:
 
     concrete_repo = repo()
+    await concrete_repo.prepare_db()
     parser = XMLParser()
     await upload_scenarios_to_repo(repo=concrete_repo, parser=parser)
     concrete_ep = ep()
