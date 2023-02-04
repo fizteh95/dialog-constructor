@@ -3,6 +3,8 @@ import typing as tp
 
 import pytest
 
+from src.adapters.alchemy.repository import SQLAlchemyRepo
+from src.adapters.repository import AbstractRepo
 from src.domain.events import EventProcessor
 from src.domain.model import Event
 from src.domain.model import InIntent
@@ -347,3 +349,10 @@ def generate_scenario(
         phrases=["start"],
     )
     return ep, fake_sg
+
+
+@pytest.fixture
+async def alchemy_repo() -> AbstractRepo:
+    repo = SQLAlchemyRepo()
+    await repo._recreate_db()
+    return repo

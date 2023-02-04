@@ -2,14 +2,16 @@ import asyncio
 import typing as tp
 
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy import orm
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.future import select
+
 from alembic import command
 from alembic.config import Config
 from src.adapters.repository import AbstractRepo
-from src.domain.model import User, Scenario
-
+from src.domain.model import Scenario
+from src.domain.model import User
 
 sa_metadata = sa.MetaData()
 
@@ -31,7 +33,7 @@ user_contexts = sa.Table(
     sa_metadata,
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("user", sa.ForeignKey("users.outer_id")),
-    sa.Column("ctx", sa.JSON, default={})  # TODO: переделать на отдельные колонки
+    sa.Column("ctx", sa.JSON, default={}),  # TODO: переделать на отдельные колонки
 )
 
 out_messages = sa.Table(
@@ -40,14 +42,14 @@ out_messages = sa.Table(
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("user", sa.ForeignKey("users.outer_id")),
     sa.Column("node_id", sa.String),
-    sa.Column("message_id", sa.String)
+    sa.Column("message_id", sa.String),
 )
 
 projects = sa.Table(
     "projects",
     sa_metadata,
     sa.Column("id", sa.Integer, primary_key=True),
-    sa.Column("name", sa.String, unique=True)
+    sa.Column("name", sa.String, unique=True),
 )
 
 scenarios = sa.Table(
@@ -56,7 +58,7 @@ scenarios = sa.Table(
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("project", sa.ForeignKey("projects.name")),
     sa.Column("name", sa.String, unique=True),
-    sa.Column("scenario_json", sa.JSON)
+    sa.Column("scenario_json", sa.JSON),
 )
 
 scenario_texts = sa.Table(
@@ -65,14 +67,14 @@ scenario_texts = sa.Table(
     sa.Column("id", sa.Integer, primary_key=True),
     sa.Column("scenario", sa.ForeignKey("scenarios.name")),
     sa.Column("template_name", sa.String),
-    sa.Column("template_value", sa.String)
+    sa.Column("template_value", sa.String),
 )
 
 
 class SQLAlchemyRepo(AbstractRepo):
     def __init__(self) -> None:
-        # self.engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
-        self.engine = create_async_engine("postgresql+asyncpg://postgres:postgres@localhost/postgres", echo=True)
+        self.engine = create_async_engine("sqlite+aiosqlite:///:memory:")  # , echo=True
+        # self.engine = create_async_engine("postgresql+asyncpg://postgres:postgres@localhost/postgres", echo=True)
 
     async def prepare_db(self) -> None:
         await self.run_async_upgrade()
@@ -87,6 +89,10 @@ class SQLAlchemyRepo(AbstractRepo):
             await conn.run_sync(self.run_upgrade, Config("alembic.ini"))
 
     async def _recreate_db(self) -> None:
+        """
+        ONLY FOR IN_MEMORY SQLITE DB!!!
+        :return:
+        """
         async with self.engine.begin() as conn:
             await conn.run_sync(sa_metadata.drop_all)
         async with self.engine.begin() as conn:
@@ -110,9 +116,82 @@ class SQLAlchemyRepo(AbstractRepo):
             await session.commit()
 
     # User
-    async def get_or_create_user(self, **kwargs: tp.Any) -> User:
+    async def get_or_create_user(self, session: tp.Any = None, **kwargs: tp.Any) -> User:
         """Get by outer_id or create user"""
-        ...
+        if session is not None:
+            if "outer_id" not in kwargs:
+                raise Exception("User without outer_id is illegal")
+            outer_id = kwargs["outer_id"]
+            result = await session.execute(
+                select(users).where(users.c.outer_id == outer_id)
+            )
+            user = result.first()
+
+            if user is None:
+                await session.execute(
+                    users.insert(), [dict(
+                        outer_id=outer_id,
+                        nickname=kwargs.get("nickname"),
+                        name=kwargs.get("name"),
+                        surname=kwargs.get("surname"),
+                        patronymic=kwargs.get("patronymic"),
+                        current_scenario_name=kwargs.get("current_scenario_name"),
+                        current_node_id=kwargs.get("current_node_id"),
+                    )]
+                )
+                result = await session.execute(
+                    select(users).where(users.c.outer_id == outer_id)
+                )
+                user = result.first()
+                print(user)
+
+            return User(
+                outer_id=outer_id,
+                nickname=user.nickname,
+                name=user.name,
+                surname=user.surname,
+                patronymic=user.patronymic,
+                current_scenario_name=user.current_scenario_name,
+                current_node_id=user.current_node_id,
+            )
+        else:
+            async_session = self.session()
+            async with async_session() as session:
+                if "outer_id" not in kwargs:
+                    raise Exception("User without outer_id is illegal")
+                outer_id = kwargs["outer_id"]
+                result = await session.execute(
+                    select(users).where(users.c.outer_id == outer_id)
+                )
+                user = result.first()
+
+                if user is None:
+                    await session.execute(
+                        users.insert(), [dict(
+                            outer_id=outer_id,
+                            nickname=kwargs.get("nickname"),
+                            name=kwargs.get("name"),
+                            surname=kwargs.get("surname"),
+                            patronymic=kwargs.get("patronymic"),
+                            current_scenario_name=kwargs.get("current_scenario_name"),
+                            current_node_id=kwargs.get("current_node_id"),
+                        )]
+                    )
+                    result = await session.execute(
+                        select(users).where(users.c.outer_id == outer_id)
+                    )
+                    user = result.first()
+                    print(user)
+
+                return User(
+                    outer_id=outer_id,
+                    nickname=user.nickname,
+                    name=user.name,
+                    surname=user.surname,
+                    patronymic=user.patronymic,
+                    current_scenario_name=user.current_scenario_name,
+                    current_node_id=user.current_node_id,
+                )
 
     async def update_user(self, user: User) -> User:
         """Update user fields"""
@@ -120,7 +199,7 @@ class SQLAlchemyRepo(AbstractRepo):
 
     # Context
     async def update_user_context(
-            self, user: User, ctx_to_update: tp.Dict[str, str]
+        self, user: User, ctx_to_update: tp.Dict[str, str]
     ) -> None:
         """Update user context"""
         ...
@@ -134,7 +213,7 @@ class SQLAlchemyRepo(AbstractRepo):
         ...
 
     async def add_to_user_history(
-            self, user: User, ids_pair: tp.Dict[str, str]
+        self, user: User, ids_pair: tp.Dict[str, str]
     ) -> None:
         """Get user history of out messages"""
         ...
@@ -148,13 +227,13 @@ class SQLAlchemyRepo(AbstractRepo):
         ...
 
     async def add_scenario_texts(
-            self, scenario_name: str, project_name: str, texts: tp.Dict[str, str]
+        self, scenario_name: str, project_name: str, texts: tp.Dict[str, str]
     ) -> None:
         """Add texts for templating scenario"""
         ...
 
     async def get_scenario_text(
-            self, scenario_name: str, project_name: str, template_name: str
+        self, scenario_name: str, project_name: str, template_name: str
     ) -> str:
         """Return template value"""
         ...
@@ -166,3 +245,9 @@ class SQLAlchemyRepo(AbstractRepo):
     async def get_all_scenarios_metadata(self) -> tp.List[tp.Tuple[str, str]]:
         """Get all scenarios names and projects"""
         ...
+
+
+async def main_repo():
+    r = SQLAlchemyRepo()
+    await r.run_async_upgrade()
+    await r.test()
