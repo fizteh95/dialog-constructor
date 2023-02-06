@@ -1,4 +1,5 @@
 import json
+import os
 import typing as tp
 
 import pytest
@@ -354,5 +355,5 @@ def generate_scenario(
 @pytest.fixture
 async def alchemy_repo() -> AbstractRepo:
     repo = SQLAlchemyRepo()
-    await repo._recreate_db()
+    await repo._recreate_db()  # noqa
     return repo

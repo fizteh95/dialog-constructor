@@ -10,6 +10,7 @@ from sqlalchemy.future import select
 
 from alembic import command
 from alembic import config
+from src import settings
 from src.adapters.alchemy.models import out_messages
 from src.adapters.alchemy.models import projects
 from src.adapters.alchemy.models import sa_metadata
@@ -18,18 +19,13 @@ from src.adapters.alchemy.models import scenarios
 from src.adapters.alchemy.models import user_contexts
 from src.adapters.alchemy.models import users
 from src.adapters.repository import AbstractRepo
-
-# from src.alembic.env import run_migrations_online
 from src.domain.model import Scenario
 from src.domain.model import User
 
 
 class SQLAlchemyRepo(AbstractRepo):
     def __init__(self) -> None:
-        # self.engine = create_async_engine("sqlite+aiosqlite:///:memory:")  # , echo=True
-        self.engine = create_async_engine(
-            "postgresql+asyncpg://postgres:postgres@localhost/postgres"  # , echo=True
-        )
+        self.engine = create_async_engine(settings.ENGINE_STRING)  # , echo=True
 
     async def prepare_db(self) -> None:
         await self.run_async_upgrade()
@@ -73,17 +69,6 @@ class SQLAlchemyRepo(AbstractRepo):
             return value
 
         return wrapper_decorator
-
-    async def test(self) -> None:
-        async_session = self.session()
-        async with async_session() as session:
-            stmt = sa.text("insert into projects (name) values ('tratata')")
-            await session.execute(stmt)
-            stmt = sa.text("select * from projects")
-            result = await session.execute(stmt)
-            res = result.fetchall()
-            print(res)
-            await session.commit()
 
     # User
     @use_session
@@ -291,7 +276,9 @@ class SQLAlchemyRepo(AbstractRepo):
     ) -> None:
         """Add scenario in repository"""
         try:
-            await self.get_scenario_by_name(name=scenario.name, project_name=project_name, session=session)
+            await self.get_scenario_by_name(
+                name=scenario.name, project_name=project_name, session=session
+            )
             await session.execute(
                 scenarios.delete().where(
                     scenarios.c.name == scenario.name,

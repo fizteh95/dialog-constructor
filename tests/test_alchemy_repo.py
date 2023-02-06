@@ -1,3 +1,4 @@
+import os
 import typing as tp
 
 import pytest
@@ -53,7 +54,7 @@ async def test_users_update(alchemy_repo: tp.Awaitable[SQLAlchemyRepo]) -> None:
         assert new_user == User(outer_id="1_2", name="test")
 
         user.nickname = "test nickname"
-        await repo.update_user(user)
+        await repo.update_user(user, session=session)
         user_from_db = await repo.get_or_create_user(outer_id="1", session=session)
         assert user_from_db != User(outer_id="1")
         assert user_from_db == User(outer_id="1", nickname="test nickname")
@@ -72,7 +73,7 @@ async def test_update_ctx(alchemy_repo: tp.Awaitable[SQLAlchemyRepo]) -> None:
         user = await repo.get_or_create_user(outer_id="1", session=session)
 
         await repo.update_user_context(
-            user=user, ctx_to_update={"first_key": "first_val"}
+            user=user, ctx_to_update={"first_key": "first_val"}, session=session
         )
         users_from_db = await session.execute(
             select(users).where(users.c.outer_id == user.outer_id)
@@ -86,7 +87,7 @@ async def test_update_ctx(alchemy_repo: tp.Awaitable[SQLAlchemyRepo]) -> None:
         assert exists_context == {"first_key": "first_val"}
 
         await repo.update_user_context(
-            user=user, ctx_to_update={"second_key": "second_val"}
+            user=user, ctx_to_update={"second_key": "second_val"}, session=session
         )
         users_from_db = await session.execute(
             select(users).where(users.c.outer_id == user.outer_id)
@@ -100,7 +101,7 @@ async def test_update_ctx(alchemy_repo: tp.Awaitable[SQLAlchemyRepo]) -> None:
         assert exists_context == {"first_key": "first_val", "second_key": "second_val"}
 
         await repo.update_user_context(
-            user=user, ctx_to_update={"first_key": "new_val"}
+            user=user, ctx_to_update={"first_key": "new_val"}, session=session
         )
         users_from_db = await session.execute(
             select(users).where(users.c.outer_id == user.outer_id)
@@ -125,7 +126,7 @@ async def test_get_user_ctx(alchemy_repo: tp.Awaitable[SQLAlchemyRepo]) -> None:
         assert old_ctx == {}
 
         await repo.update_user_context(
-            user=user, ctx_to_update={"first_key": "first_val"}
+            user=user, ctx_to_update={"first_key": "first_val"}, session=session
         )
         new_ctx = await repo.get_user_context(user, session=session)
         assert new_ctx == {"first_key": "first_val"}
@@ -167,11 +168,11 @@ async def test_update_user_history(alchemy_repo: tp.Awaitable[SQLAlchemyRepo]) -
         history = await repo.get_user_history(user=user, session=session)
         assert history == []
 
-        await repo.add_to_user_history(user=user, ids_pair={"id_1": "1010234"})
+        await repo.add_to_user_history(user=user, ids_pair={"id_1": "1010234"}, session=session)
         history = await repo.get_user_history(user=user, session=session)
         assert history == [{"id_1": "1010234"}]
 
-        await repo.add_to_user_history(user=user, ids_pair={"id_2": "1010567"})
+        await repo.add_to_user_history(user=user, ids_pair={"id_2": "1010567"}, session=session)
         history = await repo.get_user_history(user=user, session=session)
         assert history == [{"id_1": "1010234"}, {"id_2": "1010567"}]
 
@@ -211,7 +212,7 @@ async def test_get_scenario(
         )
 
         parsed_scenario_from_db = await repo.get_scenario_by_name(
-            name=mock_scenario.name, project_name="test project"
+            name=mock_scenario.name, project_name="test project", session=session
         )
         assert parsed_scenario_from_db == mock_scenario
 
@@ -247,7 +248,8 @@ async def test_add_scenario_texts(
 
         scenarios_from_db = await session.execute(
             select(scenarios).where(
-                scenarios.c.name == mock_scenario.name, scenarios.c.project == "test project"
+                scenarios.c.name == mock_scenario.name,
+                scenarios.c.project == "test project",
             )
         )
         scenario_from_db = scenarios_from_db.first()
