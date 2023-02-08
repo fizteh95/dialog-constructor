@@ -168,11 +168,15 @@ async def test_update_user_history(alchemy_repo: tp.Awaitable[SQLAlchemyRepo]) -
         history = await repo.get_user_history(user=user, session=session)
         assert history == []
 
-        await repo.add_to_user_history(user=user, ids_pair={"id_1": "1010234"}, session=session)
+        await repo.add_to_user_history(
+            user=user, ids_pair={"id_1": "1010234"}, session=session
+        )
         history = await repo.get_user_history(user=user, session=session)
         assert history == [{"id_1": "1010234"}]
 
-        await repo.add_to_user_history(user=user, ids_pair={"id_2": "1010567"}, session=session)
+        await repo.add_to_user_history(
+            user=user, ids_pair={"id_2": "1010567"}, session=session
+        )
         history = await repo.get_user_history(user=user, session=session)
         assert history == [{"id_1": "1010234"}, {"id_2": "1010567"}]
 

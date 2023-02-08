@@ -433,7 +433,7 @@ async def test_in_out_in_out(
                 "id_2",
                 "TEXT_matchtext_scenario",
                 ["id_3"],
-                [("TEXT1_1", "id_98"), ("TEXT1_2", "id_99")],
+                [("TEXT1_1", "id_98", "", ""), ("TEXT1_2", "id_99", "", "")],
             ],
             ["outMessage", "id_3", "TEXT_matchtext_scenario2", [], ""],
         ]
@@ -476,7 +476,7 @@ async def test_in_out_buttons_out(
                 "id_2",
                 "TEXT_matchtext_scenario",
                 ["id_3"],
-                [("TEXT1_1", "id_98"), ("TEXT1_2", "id_99")],
+                [("TEXT1_1", "id_98", "", ""), ("TEXT1_2", "id_99", "", "")],
             ],
             ["outMessage", "id_3", "TEXT_matchtext_scenario2", ["id_4"], ""],
             ["inMessage", "id_4", "", [], ""],
@@ -520,7 +520,7 @@ async def test_in_out_buttons_out_in(
                 "id_2",
                 "TEXT_matchtext_scenario",
                 ["id_3"],
-                [("TEXT1_1", "id_4"), ("TEXT1_2", "id_99")],
+                [("TEXT1_1", "id_4", "", ""), ("TEXT1_2", "id_99", "", "")],
             ],
             ["outMessage", "id_3", "TEXT_matchtext_scenario2", [], ""],
             ["outMessage", "id_4", "TEXT_matchtext_scenario3", [], ""],
@@ -570,8 +570,8 @@ async def test_in_out_buttons_out_in_button_out(
     [
         [
             ["matchText", "id_1", "start", ["id_2"], ""],
-            ["outMessage", "id_2", "TEXT_scenario", [], [("TEXT1_1", "id_3")]],
-            ["outMessage", "id_3", "TEXT_scenario2", [], [("TEXT1_2", "id_4")]],
+            ["outMessage", "id_2", "TEXT_scenario", [], [("TEXT1_1", "id_3", "", "")]],
+            ["outMessage", "id_3", "TEXT_scenario2", [], [("TEXT1_2", "id_4", "", "")]],
             ["outMessage", "id_4", "TEXT_scenario3", [], ""],
         ]
     ],
@@ -1267,7 +1267,7 @@ async def test_edit_message(
                 "id_2",
                 "TEXT1",
                 [],
-                [("TEXT1_1", "id_3"), ("TEXT1_2", "id_4")],
+                [("TEXT1_1", "id_3", "", ""), ("TEXT1_2", "id_4", "", "")],
             ],
             ["editMessage", "id_3", "edited text", ["id_2", "id_4"], ""],
             ["outMessage", "id_4", "TEXT3", [], ""],

@@ -48,6 +48,8 @@ class InEvent(Event):  # noqa
 @dataclass
 class Button:
     text: str
+    text_to_chat: str
+    text_to_bot: str
     callback_data: tp.Optional[str]
 
 
@@ -86,7 +88,7 @@ class ExecuteNode(ABC):
     next_ids: tp.List[str] | None
     value: str
     node_type: NodeType
-    buttons: tp.List[tp.Tuple[str, str]] | None = None
+    buttons: tp.List[tp.Tuple[str, str, str, str]] | None = None
 
     @abstractmethod
     async def execute(
@@ -102,7 +104,7 @@ class ExecuteNode(ABC):
 
     def to_dict(
         self,
-    ) -> tp.Dict[str, tp.Union[str, tp.List[str], tp.List[tp.Tuple[str, str]], None]]:
+    ) -> tp.Dict[str, tp.Union[str, tp.List[str], tp.List[tp.Tuple[str, str, str, str]], None]]:
         return dict(
             element_id=self.element_id,
             next_ids=self.next_ids,
@@ -179,7 +181,7 @@ class OutMessage(ExecuteNode):
         )
         if self.buttons:
             out_event.buttons = [
-                Button(text=x[0], callback_data=x[1]) for x in self.buttons
+                Button(text=x[0], callback_data=x[1], text_to_bot=x[2], text_to_chat=x[3]) for x in self.buttons
             ]
         return [out_event], {}, ""
 
