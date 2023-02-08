@@ -59,6 +59,30 @@ class WebAdapter(AbstractWebAdapter):
                     template = b.text
                 jinja_template = j2.Template(template)
                 b.text = jinja_template.render(ctx)
+
+                template_name = b.text_to_bot
+                if event.project_name is not None:
+                    template = await self.repo.get_scenario_text(
+                        scenario_name=scenario_name,
+                        template_name=template_name,
+                        project_name=event.project_name,
+                    )
+                else:
+                    template = b.text_to_bot
+                jinja_template = j2.Template(template)
+                b.text_to_bot = jinja_template.render(ctx)
+
+                template_name = b.text_to_chat
+                if event.project_name is not None:
+                    template = await self.repo.get_scenario_text(
+                        scenario_name=scenario_name,
+                        template_name=template_name,
+                        project_name=event.project_name,
+                    )
+                else:
+                    template = b.text_to_chat
+                jinja_template = j2.Template(template)
+                b.text_to_chat = jinja_template.render(ctx)
         return event
 
     async def message_handler(

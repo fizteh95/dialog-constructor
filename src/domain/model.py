@@ -10,6 +10,7 @@ from enum import Enum
 
 import aiohttp
 import curlparser
+from jsonpath_ng import jsonpath, parse
 
 
 @dataclass(kw_only=True)
@@ -104,7 +105,9 @@ class ExecuteNode(ABC):
 
     def to_dict(
         self,
-    ) -> tp.Dict[str, tp.Union[str, tp.List[str], tp.List[tp.Tuple[str, str, str, str]], None]]:
+    ) -> tp.Dict[
+        str, tp.Union[str, tp.List[str], tp.List[tp.Tuple[str, str, str, str]], None]
+    ]:
         return dict(
             element_id=self.element_id,
             next_ids=self.next_ids,
@@ -179,9 +182,12 @@ class OutMessage(ExecuteNode):
             linked_node_id=self.element_id,
             scenario_name=user.current_scenario_name,
         )
-        if self.buttons:
+        if self.buttons:  # проверка на процедурность кнопок
             out_event.buttons = [
-                Button(text=x[0], callback_data=x[1], text_to_bot=x[2], text_to_chat=x[3]) for x in self.buttons
+                Button(
+                    text=x[0], callback_data=x[1], text_to_bot=x[2], text_to_chat=x[3]
+                )
+                for x in self.buttons
             ]
         return [out_event], {}, ""
 
@@ -210,6 +216,12 @@ class DataExtract(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        """
+        jsonpath_expr = parse("[*].['custom Name']")
+        jsonpath_expr = parse('[*].balance.RUB')
+        [match.value for match in jsonpath_expr.find(data)]
+        => [1234, 346245]
+        """
         if in_text is None:
             raise Exception("No input in extracting node")
         extract_type = self.value.split("(")[0]

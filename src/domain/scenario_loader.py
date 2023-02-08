@@ -45,7 +45,9 @@ class XMLParser(Parser):
         raise
 
     @staticmethod
-    def _parse_button(text: str, next_node_ids: tp.List[str]) -> tp.Tuple[str, str, str, str]:
+    def _parse_button(
+        text: str, next_node_ids: tp.List[str]
+    ) -> tp.Tuple[str, str, str, str]:
         if ":" in text:
             text_values = text.split(":")
             if len(text_values) != 3:
@@ -122,7 +124,9 @@ class XMLParser(Parser):
                     if not next_node_ids:
                         print("button must have any child")
                         raise
-                    button_val = self._parse_button(text=text, next_node_ids=next_node_ids)
+                    button_val = self._parse_button(
+                        text=text, next_node_ids=next_node_ids
+                    )
                     buttons.append(button_val)
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
