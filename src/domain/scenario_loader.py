@@ -104,7 +104,7 @@ class XMLParser(Parser):
         # присоединение кнопок к целевым блокам
         for n in nodes:
             xml_value = n.get("value")
-            if xml_value == "btnArray":
+            if (xml_value == "btnArray") or (xml_value == "btnArrayProcedural"):
                 array_id = n.get("id")
                 if not array_id:
                     print("button array has no id")
@@ -130,7 +130,12 @@ class XMLParser(Parser):
                     buttons.append(button_val)
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
-                result[source_id].next_ids = []
+                if xml_value == "btnArrayProcedural":
+                    result[source_id].procedural_source = True
+                # TODO: test this statement below
+                result[source_id].next_ids = arrows.get(
+                    result[source_id].element_id, []
+                )  # []
         root_id = result[list(result.keys())[0]].element_id
         return root_id, list(result.values())
 

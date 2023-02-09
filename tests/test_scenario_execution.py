@@ -9,6 +9,7 @@ from src.domain.model import DataExtract
 from src.domain.model import InEvent
 from src.domain.model import NodeType
 from src.domain.model import OutEvent
+from src.domain.model import OutMessage
 from src.domain.model import RemoteRequest
 from src.domain.model import Scenario
 from src.domain.model import User
@@ -1183,7 +1184,7 @@ async def test_data_extract_json() -> None:
         element_id="id_1",
         next_ids=[],
         node_type=NodeType.dataExtract,
-        value="""json(["first_key"][0]["second_key"])""",
+        value="""json(first_key[0].second_key)""",
     )
     json_to_extract = """{"first_key": [{"second_key": "tadam!"}]}"""
     events, new_ctx, text_to_pipeline = await extract_node.execute(
@@ -1192,6 +1193,55 @@ async def test_data_extract_json() -> None:
     assert events == []
     assert new_ctx == {}
     assert text_to_pipeline == "tadam!"
+
+
+@pytest.mark.asyncio
+async def test_data_extract_json_list() -> None:
+    user = User(outer_id="1")
+    ctx: tp.Dict[str, str] = {}
+    extract_node = DataExtract(
+        element_id="id_1",
+        next_ids=[],
+        node_type=NodeType.dataExtract,
+        value="""jsonList([*].balance.RUB#[*].id#[*].requisites.inn)""",
+    )
+    json_to_extract = """[
+        {
+            "id": 7333876,
+            "balance": {"RUB": 33118521.85, "USD": 0.0, "EUR": 0.0},
+            "startDate": "20.06.2012",
+            "hidden": false,
+            "requisites": {
+                "bankName": "ПАО 'СКБ-БАНК'",
+                "address": "620078, г. Екатеринбург, ул. Малышева, дом 122",
+                "bic": "046577756",
+                "inn": "6608003052",
+                "corrAccount": "30101810800000000756"
+            },
+            "pdfLink": "/export/account/pdf/7333876"
+        },
+        {
+            "id": 7333882,
+            "balance": {"RUB": 0.0, "USD": 0.0, "EUR": 0.0},
+            "startDate": "18.08.2017",
+            "hidden": false,
+            "requisites": {
+                "bankName": "ПАО 'СКБ-БАНК'",
+                "address": "620078, г. Екатеринбург, ул. Малышева, дом 122",
+                "bic": "046577756",
+                "inn": "6608003052",
+                "corrAccount": "30101810800000000756"
+            }
+        }
+    ]"""
+    events, new_ctx, text_to_pipeline = await extract_node.execute(
+        user, ctx, json_to_extract
+    )
+    assert events == []
+    assert new_ctx == {}
+    assert text_to_pipeline == json.dumps(
+        [[33118521.85, 0.0], [7333876, 7333882], ["6608003052", "6608003052"]]
+    )
 
 
 @pytest.mark.asyncio
@@ -1327,3 +1377,224 @@ async def test_edit_message_and_final_node(
     assert out_events[0].node_to_edit is None
     assert user.current_node_id is None
     assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["inIntent", "id_1", "test_intent", ["id_2"], ""],
+            [
+                "dataExtract",
+                "id_2",
+                "jsonList([*].balance.RUB#[*].id#[*].requisites.inn)",
+                ["id_3"],
+                "",
+            ],
+            OutMessage(
+                element_id="id_3",
+                next_ids=[],
+                value="test text",
+                node_type=NodeType.outMessage,
+                procedural_source=True,
+            ),
+        ]
+    ],
+)
+async def test_procedural_buttons(
+    generate_intent_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter],
+) -> None:
+    ep, fake_sg = generate_intent_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(
+        user=user,
+        intent="test_intent",
+        text="""[
+        {
+            "id": 7333876,
+            "balance": {"RUB": 33118521.85, "USD": 0.0, "EUR": 0.0},
+            "startDate": "20.06.2012",
+            "hidden": false,
+            "requisites": {
+                "bankName": "ПАО 'СКБ-БАНК'",
+                "address": "620078, г. Екатеринбург, ул. Малышева, дом 122",
+                "bic": "046577756",
+                "inn": "6608003052",
+                "corrAccount": "30101810800000000756"
+            },
+            "pdfLink": "/export/account/pdf/7333876"
+        },
+        {
+            "id": 7333882,
+            "balance": {"RUB": 0.0, "USD": 0.0, "EUR": 0.0},
+            "startDate": "18.08.2017",
+            "hidden": false,
+            "requisites": {
+                "bankName": "ПАО 'СКБ-БАНК'",
+                "address": "620078, г. Екатеринбург, ул. Малышева, дом 122",
+                "bic": "046577756",
+                "inn": "6608003052",
+                "corrAccount": "30101810800000000756"
+            }
+        }
+    ]""",
+        project_name="test_project",
+    )
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    intent_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == intent_scenario.get_node_by_id("id_3").value
+
+    assert out_events[0].buttons is not None
+    assert len(out_events[0].buttons) == 2
+    assert out_events[0].buttons[0].text == "33118521.85"
+    assert out_events[0].buttons[0].text_to_bot == "7333876"
+    assert out_events[0].buttons[0].text_to_chat == "6608003052"
+    assert out_events[0].buttons[1].text == "0.0"
+    assert out_events[0].buttons[1].text_to_bot == "7333882"
+    assert out_events[0].buttons[1].text_to_chat == "6608003052"
+
+    assert user.current_node_id == "id_3"
+    assert user.current_scenario_name == "matchtext_test"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["inIntent", "id_1", "test_intent", ["id_2"], ""],
+            [
+                "dataExtract",
+                "id_2",
+                "jsonList([*].balance.RUB#[*].id#[*].requisites.inn)",
+                ["id_3"],
+                "",
+            ],
+            OutMessage(
+                element_id="id_3",
+                next_ids=[],
+                value="test text",
+                node_type=NodeType.outMessage,
+                buttons=[
+                    ("TEXT1.1", "", "1.1_to_bot", "1.1_to_chat"),
+                    ("TEXT1.2", "", "1.2_to_bot", "1.2_to_chat"),
+                ],
+                procedural_source=True,
+            ),
+        ]
+    ],
+)
+async def test_procedural_buttons_with_regular(
+    generate_intent_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter],
+) -> None:
+    ep, fake_sg = generate_intent_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(
+        user=user,
+        intent="test_intent",
+        text="""[
+        {
+            "id": 7333876,
+            "balance": {"RUB": 33118521.85, "USD": 0.0, "EUR": 0.0},
+            "startDate": "20.06.2012",
+            "hidden": false,
+            "requisites": {
+                "bankName": "ПАО 'СКБ-БАНК'",
+                "address": "620078, г. Екатеринбург, ул. Малышева, дом 122",
+                "bic": "046577756",
+                "inn": "6608003052",
+                "corrAccount": "30101810800000000756"
+            },
+            "pdfLink": "/export/account/pdf/7333876"
+        },
+        {
+            "id": 7333882,
+            "balance": {"RUB": 0.0, "USD": 0.0, "EUR": 0.0},
+            "startDate": "18.08.2017",
+            "hidden": false,
+            "requisites": {
+                "bankName": "ПАО 'СКБ-БАНК'",
+                "address": "620078, г. Екатеринбург, ул. Малышева, дом 122",
+                "bic": "046577756",
+                "inn": "6608003052",
+                "corrAccount": "30101810800000000756"
+            }
+        }
+    ]""",
+        project_name="test_project",
+    )
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    intent_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == intent_scenario.get_node_by_id("id_3").value
+
+    assert out_events[0].buttons is not None
+    assert len(out_events[0].buttons) == 4
+    assert out_events[0].buttons[0].text == "33118521.85"
+    assert out_events[0].buttons[0].text_to_bot == "7333876"
+    assert out_events[0].buttons[0].text_to_chat == "6608003052"
+    assert out_events[0].buttons[1].text == "0.0"
+    assert out_events[0].buttons[1].text_to_bot == "7333882"
+    assert out_events[0].buttons[1].text_to_chat == "6608003052"
+    assert out_events[0].buttons[2].text == "TEXT1.1"
+    assert out_events[0].buttons[2].text_to_bot == "1.1_to_bot"
+    assert out_events[0].buttons[2].text_to_chat == "1.1_to_chat"
+    assert out_events[0].buttons[3].text == "TEXT1.2"
+    assert out_events[0].buttons[3].text_to_bot == "1.2_to_bot"
+    assert out_events[0].buttons[3].text_to_chat == "1.2_to_chat"
+
+    assert user.current_node_id == "id_3"
+    assert user.current_scenario_name == "matchtext_test"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            [
+                "outMessage",
+                "id_2",
+                "TEXT_matchtext_scenario",
+                ["id_3"],
+                [("TEXT1_1", "id_98", "", ""), ("TEXT1_2", "id_99", "", "")],
+            ],
+            ["inMessage", "id_3", "", [], ""],
+        ]
+    ],
+)
+async def test_next_block_after_buttons(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert out_events[0].buttons is not None
+    assert out_events[0].buttons[0].text == "TEXT1_1"
+    assert out_events[0].buttons[0].callback_data == "id_98"
+    assert out_events[0].buttons[1].text == "TEXT1_2"
+    assert out_events[0].buttons[1].callback_data == "id_99"
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_3").element_id
+    assert user.current_scenario_name == matchtext_scenario.name

@@ -10,7 +10,7 @@ from enum import Enum
 
 import aiohttp
 import curlparser
-from jsonpath_ng import jsonpath, parse
+from jsonpath_ng import parse
 
 
 @dataclass(kw_only=True)
@@ -78,6 +78,7 @@ class NodeType(Enum):
     setVariable = "setVariable"
     getVariable = "getVariable"
     passNode = "passNode"
+    loopCounter = "loopCounter"
     ...
 
 
@@ -90,6 +91,7 @@ class ExecuteNode(ABC):
     value: str
     node_type: NodeType
     buttons: tp.List[tp.Tuple[str, str, str, str]] | None = None
+    procedural_source: tp.Optional[bool] = False
 
     @abstractmethod
     async def execute(
@@ -182,13 +184,34 @@ class OutMessage(ExecuteNode):
             linked_node_id=self.element_id,
             scenario_name=user.current_scenario_name,
         )
-        if self.buttons:  # проверка на процедурность кнопок
-            out_event.buttons = [
+        buttons_to_add = []
+        procedural_buttons = []
+        if self.buttons:
+            buttons_to_add = [
                 Button(
-                    text=x[0], callback_data=x[1], text_to_bot=x[2], text_to_chat=x[3]
+                    text=str(x[0]),
+                    callback_data=str(x[1]),
+                    text_to_bot=str(x[2]),
+                    text_to_chat=str(x[3]),
                 )
                 for x in self.buttons
             ]
+        if self.procedural_source and in_text:
+            buttons_data = json.loads(in_text)
+            if len(buttons_data) == 3:
+                button_texts, to_bot_texts, to_chat_texts = buttons_data
+                for t, b, c in zip(button_texts, to_bot_texts, to_chat_texts):
+                    procedural_buttons.append(
+                        Button(
+                            text=str(t),
+                            callback_data="",
+                            text_to_bot=str(b),
+                            text_to_chat=str(c),
+                        )
+                    )
+        all_buttons: tp.List[Button] = procedural_buttons + buttons_to_add
+        if all_buttons:
+            out_event.buttons = all_buttons
         return [out_event], {}, ""
 
 
@@ -207,7 +230,10 @@ class EditMessage(ExecuteNode):
         )
         if self.buttons:
             out_event.buttons = [
-                Button(text=x[0], callback_data=x[1]) for x in self.buttons
+                Button(
+                    text=x[0], callback_data=x[1], text_to_bot=x[2], text_to_chat=x[3]
+                )
+                for x in self.buttons
             ]
         return [out_event], {}, ""
 
@@ -232,9 +258,30 @@ class DataExtract(ExecuteNode):
                 return [], {}, ""
             return [], {}, in_text[res.start() : res.end()]
         elif extract_type == "json":
-            input_json = json.loads(in_text)  # noqa
-            search_path = self.value[5:-1]
-            return [], {}, str(eval(f"input_json{search_path}"))
+            try:
+                jsonpath_expr = parse(self.value[5:-1])
+                extracted = [
+                    match.value for match in jsonpath_expr.find(json.loads(in_text))
+                ]
+                if len(extracted) > 0:
+                    return [], {}, str(extracted[0])
+            except Exception as e:
+                print(e)
+            return [], {}, ""
+        elif extract_type == "jsonList":
+            try:
+                values_to_extract = self.value[9:-1].split("#")
+                ret_val = []
+                for v in values_to_extract:
+                    jsonpath_expr = parse(v)
+                    extracted = [
+                        match.value for match in jsonpath_expr.find(json.loads(in_text))
+                    ]
+                    ret_val.append(extracted)
+                return [], {}, json.dumps(ret_val)
+            except Exception as e:
+                print(e)
+            return [], {}, ""
         else:
             raise NotImplementedError("Such data extract type not implemented")
 
@@ -358,6 +405,13 @@ class GetVariable(ExecuteNode):
             raise NotImplementedError("Such variable type not implemented")
 
 
+class LoopCounter(ExecuteNode):
+    async def execute(
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        raise NotImplementedError("Not implemented")
+
+
 class_dict = {
     "inIntent": InIntent,
     "matchText": MatchText,
@@ -370,6 +424,7 @@ class_dict = {
     "getVariable": GetVariable,
     "logicalUnit": LogicalUnit,
     "passNode": PassNode,
+    "loopCounter": LoopCounter,
 }
 
 
