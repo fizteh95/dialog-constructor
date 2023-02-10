@@ -409,7 +409,13 @@ class LoopCounter(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
-        raise NotImplementedError("Not implemented")
+        if self.next_ids is None:
+            raise Exception("Need two child for loop counter node")
+        current_count = int(ctx.get(f"__{self.element_id}_count", 0))
+        if current_count > int(self.value):
+            return [], {f"__{self.element_id}_count": str(current_count + 1)}, self.next_ids[1]
+        else:
+            return [], {f"__{self.element_id}_count": str(current_count + 1)}, self.next_ids[0]
 
 
 class_dict = {
