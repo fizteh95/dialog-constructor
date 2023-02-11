@@ -411,10 +411,13 @@ class LoopCounter(ExecuteNode):
     ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
         if self.next_ids is None:
             raise Exception("Need two child for loop counter node")
-        current_count = int(ctx.get(f"__{self.element_id}_count", 0))
+        current_count = int(ctx.get(f"__{self.element_id}_count", 1))
+        # value = self.value.split("(")[1].split(")")[0]
         if current_count > int(self.value):
+            print("tp0")
             return [], {f"__{self.element_id}_count": str(current_count + 1)}, self.next_ids[1]
         else:
+            print(f"tp1, {current_count}")
             return [], {f"__{self.element_id}_count": str(current_count + 1)}, self.next_ids[0]
 
 

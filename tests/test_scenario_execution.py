@@ -1598,3 +1598,110 @@ async def test_next_block_after_buttons(
     assert out_events[0].buttons[1].callback_data == "id_99"
     assert user.current_node_id == matchtext_scenario.get_node_by_id("id_3").element_id
     assert user.current_scenario_name == matchtext_scenario.name
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            ["outMessage", "id_2", "Закончим?", [], [("Да", "id_4", "", ""), ("Нет", "id_3", "", "")]],
+            ["loopCounter", "id_3", "2", ["id_2", "id_5"], ""],
+            ["outMessage", "id_4", "Закончили", [], ""],
+            ["outMessage", "id_5", "Закончили по счетчику", [], ""],
+        ]
+    ],
+)
+async def test_loop_counter(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert out_events[0].buttons is not None
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event2 = InEvent(
+        user=user, button_pushed_next="id_4", project_name="test_project"
+    )
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_4").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+    # теперь по счетчику
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    assert len(out_events) == 1
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    in_event3 = InEvent(
+        user=user, button_pushed_next="id_3", project_name="test_project"
+    )
+    out_events, new_ctx = await ep.process_event(in_event3, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert ctx == {"__id_3_count": "2"}
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    out_events, new_ctx = await ep.process_event(in_event3, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert ctx == {"__id_3_count": "3"}
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    out_events, new_ctx = await ep.process_event(in_event3, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert ctx == {"__id_3_count": "4"}
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
+
+    # теперь раньше превышения счетчика
+    in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx = {}
+
+    out_events, new_ctx = await ep.process_event(in_event, ctx, fake_sg.find)
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    assert len(out_events) == 1
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    out_events, new_ctx = await ep.process_event(in_event3, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
+    assert ctx == {"__id_3_count": "2"}
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
+
+    out_events, new_ctx = await ep.process_event(in_event2, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_4").value
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None
