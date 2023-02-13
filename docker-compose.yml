@@ -1,0 +1,45 @@
+version: "3"
+
+services:
+
+  constructor:
+    # build: .
+    image: constructor
+    depends_on:
+      - postgres
+      - isfront
+    environment:
+      - TEST=true
+      - DB_HOST=postgres
+      - DB_PASSWORD=postgres
+      - DB_USER=postgres
+      - DB_NAME=postgres
+      - DB_HOST=5432
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8080
+#    volumes:
+#      - ./src:/src
+#      - ./tests:/tests
+    command: python main.py
+    network_mode: host
+    ports:
+      - "8080:8080"
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  isfront:
+    image: constructor
+    ports:
+      - "8081:8081"
+    command: python isfront.py

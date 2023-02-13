@@ -52,5 +52,5 @@ class Web:
         server.run()
 
 
-web = Web(host="localhost", port=8081)
+web = Web(host="0.0.0.0", port=8081)
 web.start()

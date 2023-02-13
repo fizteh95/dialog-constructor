@@ -77,7 +77,6 @@ class EPWrapper(AbstractEPWrapper):
                 scenario_getter=self.find,
             )
             await self.repo.update_user(event.user)
-            print(ctx)
             await self.repo.update_user_context(event.user, new_ctx)
             if event.user.current_scenario_name is None:
                 await self.repo.clear_user_context(event.user)
