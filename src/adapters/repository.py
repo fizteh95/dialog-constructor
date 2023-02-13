@@ -31,6 +31,13 @@ class AbstractRepo(ABC):
         """Update user context"""
 
     @abstractmethod
+    async def clear_user_context(
+        self,
+        user: User,
+    ) -> None:
+        """Clear user context (only loop counters)"""
+
+    @abstractmethod
     async def get_user_context(self, user: User) -> tp.Dict[str, str]:
         """Get user context"""
 
@@ -138,6 +145,19 @@ class InMemoryRepo(AbstractRepo):
     ) -> None:
         """Update user fields"""
         self.users_ctx[user.outer_id].update(ctx_to_update)
+
+    async def clear_user_context(
+        self,
+        user: User,
+    ) -> None:
+        """Clear user context (only loop counters)"""
+        keys = list(self.users_ctx[user.outer_id].keys())
+        new_dict = {}
+        for k in keys:
+            if "_loopCount" in k:
+                continue
+            new_dict[k] = self.users_ctx[user.outer_id][k]
+        self.users_ctx[user.outer_id] = new_dict
 
     async def get_user_context(self, user: User) -> tp.Dict[str, str]:
         """Get user context"""

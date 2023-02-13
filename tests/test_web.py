@@ -75,7 +75,7 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     _web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
     web_client = TestClient(_web.app)
 
-    data_message = {"user_id": "test123", "text": "Hi!", "project_id": "test_project"}
+    data_message = {"user_id": "test123", "text": "Hi!", "project_id": "test_project", "intent": ""}
     response = web_client.post("/message_text", json=data_message)
     assert response.status_code == 200
     assert len(response.json()) == 1

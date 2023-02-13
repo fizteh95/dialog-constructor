@@ -184,6 +184,48 @@ class SQLAlchemyRepo(AbstractRepo):
         await session.commit()
 
     @use_session
+    async def clear_user_context(self, user: User, session: tp.Any = None) -> None:
+        """Clear user context"""
+        users_from_db = await session.execute(
+            select(users).where(users.c.outer_id == user.outer_id)
+        )
+        user_from_db = users_from_db.first()
+
+        result_ctx = await session.execute(
+            select(user_contexts).where(user_contexts.c.user == user_from_db.id)
+        )
+        result_ctx = result_ctx.first()
+        if result_ctx is None:
+            await session.execute(
+                user_contexts.insert(),
+                [
+                    dict(
+                        user=user_from_db.id,
+                        ctx={},
+                    )
+                ],
+            )
+        result_ctx = await session.execute(
+            select(user_contexts).where(user_contexts.c.user == user_from_db.id)
+        )
+        result_ctx = result_ctx.first()
+
+        exists_context = result_ctx.ctx
+
+        new_context = {}
+        for k in list(exists_context.keys()):
+            if "_loopCount" in k:
+                continue
+            new_context[k] = exists_context[k]
+
+        await session.execute(
+            sa.update(user_contexts)
+            .where(user_contexts.c.user == user_from_db.id)
+            .values(ctx=new_context)
+        )
+        await session.commit()
+
+    @use_session
     async def get_user_context(
         self, user: User, session: tp.Any = None
     ) -> tp.Dict[str, str]:
@@ -297,6 +339,7 @@ class SQLAlchemyRepo(AbstractRepo):
                 )
             ],
         )
+        await session.commit()
 
     @use_session
     async def add_scenario_texts(

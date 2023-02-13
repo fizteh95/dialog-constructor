@@ -187,9 +187,7 @@ class EventProcessor:
                 user.current_node_id = current_node.element_id
                 return output, ctx
             elif current_node.node_type == NodeType.loopCounter:
-                _, update_ctx, next_node_id = await current_node.execute(
-                    user, ctx, ""
-                )
+                _, update_ctx, next_node_id = await current_node.execute(user, ctx, "")
                 ctx.update(update_ctx)
                 current_node = current_scenario.get_node_by_id(next_node_id)
                 continue

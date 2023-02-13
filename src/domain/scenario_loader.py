@@ -133,9 +133,7 @@ class XMLParser(Parser):
                 if xml_value == "btnArrayProcedural":
                     result[source_id].procedural_source = True
                 # TODO: test this statement below
-                result[source_id].next_ids = arrows.get(
-                    result[source_id].element_id, []
-                )  # []
+                result[source_id].next_ids = arrows.get(array_id, [])  # []
         root_id = result[list(result.keys())[0]].element_id
         return root_id, list(result.values())
 

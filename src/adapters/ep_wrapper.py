@@ -76,9 +76,11 @@ class EPWrapper(AbstractEPWrapper):
                 ctx=ctx,
                 scenario_getter=self.find,
             )
-            print(new_ctx)
-            await self.repo.update_user_context(event.user, new_ctx)
             await self.repo.update_user(event.user)
+            print(ctx)
+            await self.repo.update_user_context(event.user, new_ctx)
+            if event.user.current_scenario_name is None:
+                await self.repo.clear_user_context(event.user)
             for e in out_events:
                 e.project_name = event.project_name
             return out_events  # type: ignore

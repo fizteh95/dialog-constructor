@@ -898,7 +898,7 @@ async def test_cycle_until_done(
             ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", ["id_4"], ""],
             ["setVariable", "id_4", "user(test_var1)", ["id_5"], ""],
-            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+            ["inMessage", "id_5", "", [], ""],
         ]
     ],
 )
@@ -924,11 +924,8 @@ async def test_set_variable(
     assert len(new_ctx) == 2
     assert new_ctx["old_var"] == "some_text"
     assert new_ctx["test_var1"] == in_event.text
-    assert len(out_events) == 1
-    assert isinstance(out_events[0], OutEvent)
-    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
-    assert user.current_node_id is None
-    assert user.current_scenario_name is None
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_5").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
@@ -940,7 +937,7 @@ async def test_set_variable(
             ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", ["id_4"], ""],
             ["setVariable", "id_4", "user(test_var1)=1", ["id_5"], ""],
-            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+            ["inMessage", "id_5", "", [], ""],
         ]
     ],
 )
@@ -966,11 +963,8 @@ async def test_set_variable_as_value(
     assert len(new_ctx) == 2
     assert new_ctx["old_var"] == "some_text"
     assert new_ctx["test_var1"] == "1"
-    assert len(out_events) == 1
-    assert isinstance(out_events[0], OutEvent)
-    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
-    assert user.current_node_id is None
-    assert user.current_scenario_name is None
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_5").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
@@ -982,7 +976,7 @@ async def test_set_variable_as_value(
             ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", ["id_4"], ""],
             ["setVariable", "id_4", "user(old_var)+=1", ["id_5"], ""],
-            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+            ["inMessage", "id_5", "", [], ""],
         ]
     ],
 )
@@ -1002,11 +996,8 @@ async def test_set_variable_as_plus(
     out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 1
     assert new_ctx["old_var"] == "2"
-    assert len(out_events) == 1
-    assert isinstance(out_events[0], OutEvent)
-    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
-    assert user.current_node_id is None
-    assert user.current_scenario_name is None
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_5").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
@@ -1018,7 +1009,7 @@ async def test_set_variable_as_plus(
             ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", ["id_4"], ""],
             ["setVariable", "id_4", "user(old_var)-=1", ["id_5"], ""],
-            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+            ["inMessage", "id_5", "", [], ""],
         ]
     ],
 )
@@ -1038,11 +1029,8 @@ async def test_set_variable_as_minus(
     out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 1
     assert new_ctx["old_var"] == "9"
-    assert len(out_events) == 1
-    assert isinstance(out_events[0], OutEvent)
-    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
-    assert user.current_node_id is None
-    assert user.current_scenario_name is None
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_5").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
@@ -1054,7 +1042,7 @@ async def test_set_variable_as_minus(
             ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", ["id_4"], ""],
             ["setVariable", "id_4", "user(old_var)+= haba haba!", ["id_5"], ""],
-            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+            ["inMessage", "id_5", "", [], ""],
         ]
     ],
 )
@@ -1074,11 +1062,8 @@ async def test_set_variable_as_plus_as_string(
     out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 1
     assert new_ctx["old_var"] == "what? haba haba!"
-    assert len(out_events) == 1
-    assert isinstance(out_events[0], OutEvent)
-    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
-    assert user.current_node_id is None
-    assert user.current_scenario_name is None
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_5").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
@@ -1090,7 +1075,7 @@ async def test_set_variable_as_plus_as_string(
             ["outMessage", "id_2", "TEXT_scenario", ["id_3"], ""],
             ["inMessage", "id_3", "", ["id_4"], ""],
             ["setVariable", "id_4", "user(old_var)", ["id_5"], ""],
-            ["outMessage", "id_5", "TEXT_scenario2", [], ""],
+            ["inMessage", "id_5", "", [], ""],
         ]
     ],
 )
@@ -1115,11 +1100,8 @@ async def test_set_variable_update(
     out_events, new_ctx = await ep.process_event(in_event, new_ctx, fake_sg.find)
     assert len(new_ctx) == 1
     assert new_ctx["old_var"] == in_event.text
-    assert len(out_events) == 1
-    assert isinstance(out_events[0], OutEvent)
-    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
-    assert user.current_node_id is None
-    assert user.current_scenario_name is None
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_5").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
@@ -1133,7 +1115,7 @@ async def test_set_variable_update(
             ["dataExtract", "id_4", "re(^[Ss]tart$)", ["id_5"], ""],
             ["logicalUnit", "id_5", "NOT", ["id_6", "id_7"], ""],
             ["outMessage", "id_6", "TEXT_scenario2", [], ""],
-            ["outMessage", "id_7", "TEXT_scenario3", [], ""],
+            ["inMessage", "id_7", "", [], ""],
         ]
     ],
 )
@@ -1151,11 +1133,9 @@ async def test_get_variable(
 
     assert new_ctx["old_var"] == "some_text"
     assert new_ctx["test_var1"] == in_event.text
-    assert len(out_events) == 1
-    assert isinstance(out_events[0], OutEvent)
-    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_7").value
-    assert user.current_node_id is None
-    assert user.current_scenario_name is None
+    assert len(out_events) == 0
+    assert user.current_node_id == matchtext_scenario.get_node_by_id("id_7").element_id
+    assert user.current_scenario_name == matchtext_scenario.name
 
 
 @pytest.mark.asyncio
@@ -1606,7 +1586,13 @@ async def test_next_block_after_buttons(
     [
         [
             ["matchText", "id_1", "start", ["id_2"], ""],
-            ["outMessage", "id_2", "Закончим?", [], [("Да", "id_4", "", ""), ("Нет", "id_3", "", "")]],
+            [
+                "outMessage",
+                "id_2",
+                "Закончим?",
+                [],
+                [("Да", "id_4", "", ""), ("Нет", "id_3", "", "")],
+            ],
             ["loopCounter", "id_3", "2", ["id_2", "id_5"], ""],
             ["outMessage", "id_4", "Закончили", [], ""],
             ["outMessage", "id_5", "Закончили по счетчику", [], ""],
@@ -1660,7 +1646,7 @@ async def test_loop_counter(
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
-    assert ctx == {"__id_3_count": "2"}
+    assert ctx == {"__id_3_loopCount": "2"}
     assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
@@ -1668,14 +1654,14 @@ async def test_loop_counter(
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
-    assert ctx == {"__id_3_count": "3"}
+    assert ctx == {"__id_3_loopCount": "3"}
     assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
     out_events, new_ctx = await ep.process_event(in_event3, ctx, fake_sg.find)
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
-    assert ctx == {"__id_3_count": "4"}
+    assert ctx == {"__id_3_loopCount": "1"}
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_5").value
     assert user.current_node_id is None
     assert user.current_scenario_name is None
@@ -1695,7 +1681,7 @@ async def test_loop_counter(
     assert len(out_events) == 1
     assert isinstance(out_events[0], OutEvent)
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_2").value
-    assert ctx == {"__id_3_count": "2"}
+    assert ctx == {"__id_3_loopCount": "2"}
     assert user.current_node_id == matchtext_scenario.get_node_by_id("id_2").element_id
     assert user.current_scenario_name == matchtext_scenario.name
 
