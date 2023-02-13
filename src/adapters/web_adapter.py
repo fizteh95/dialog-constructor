@@ -59,6 +59,30 @@ class WebAdapter(AbstractWebAdapter):
                     template = b.text
                 jinja_template = j2.Template(template)
                 b.text = jinja_template.render(ctx)
+
+                template_name = b.text_to_bot
+                if event.project_name is not None:
+                    template = await self.repo.get_scenario_text(
+                        scenario_name=scenario_name,
+                        template_name=template_name,
+                        project_name=event.project_name,
+                    )
+                else:
+                    template = b.text_to_bot
+                jinja_template = j2.Template(template)
+                b.text_to_bot = jinja_template.render(ctx)
+
+                template_name = b.text_to_chat
+                if event.project_name is not None:
+                    template = await self.repo.get_scenario_text(
+                        scenario_name=scenario_name,
+                        template_name=template_name,
+                        project_name=event.project_name,
+                    )
+                else:
+                    template = b.text_to_chat
+                jinja_template = j2.Template(template)
+                b.text_to_chat = jinja_template.render(ctx)
         return event
 
     async def message_handler(
@@ -67,11 +91,12 @@ class WebAdapter(AbstractWebAdapter):
         """Process income message from poller"""
         user_outer_id = unparsed_event["user_id"]
         text = unparsed_event["text"]
+        intent = unparsed_event["intent"]
         project_id = unparsed_event["project_id"]
         # TODO: здесь должен происходить матчинг айдишника и имени проекта
         user = await self.repo.get_or_create_user(outer_id=user_outer_id)
         message = InEvent(
-            user=user, text=text, to_process=False, project_name=project_id
+            user=user, text=text, intent=intent, to_process=False, project_name=project_id
         )
         await self.bus.public_message(message=message)
         events: tp.List[OutEvent] = await self.ep.process_event(message)  # type: ignore

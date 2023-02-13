@@ -37,6 +37,7 @@ async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
         tree = os.walk(f"./src/scenarios/{project}")
         for item in tree:
             scenario_paths = item[1]
+            scenario_paths = [x for x in scenario_paths if x != "__pycache__"]
             for scenario in scenario_paths:
                 print(scenario)
                 tree = os.walk(f"./src/scenarios/{project}/{scenario}")
@@ -54,13 +55,21 @@ async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
                             input_stuff=f"./src/scenarios/{project}/{scenario}/scenario.xml"
                         )
                         parsed_nodes = {x.element_id: x for x in nodes}
-                        created_scenario = Scenario(name=scenario, root_id=root_id, nodes=parsed_nodes)
+                        created_scenario = Scenario(
+                            name=scenario, root_id=root_id, nodes=parsed_nodes
+                        )
                     else:
                         continue
-                    with open(f"./src/scenarios/{project}/{scenario}/text_templates.json", "r") as f:
+                    with open(
+                        f"./src/scenarios/{project}/{scenario}/text_templates.json", "r"
+                    ) as f:
                         text_dict = json.load(f)
-                    await repo.add_scenario(scenario=created_scenario, project_name=project)
-                    await repo.add_scenario_texts(scenario_name=scenario, project_name=project, texts=text_dict)
+                    await repo.add_scenario(
+                        scenario=created_scenario, project_name=project
+                    )
+                    await repo.add_scenario_texts(
+                        scenario_name=scenario, project_name=project, texts=text_dict
+                    )
 
                     break
                 print("######")
@@ -90,6 +99,7 @@ async def bootstrap(
 ) -> tp.Any:
 
     concrete_repo = repo()
+    await concrete_repo.prepare_db()
     parser = XMLParser()
     await upload_scenarios_to_repo(repo=concrete_repo, parser=parser)
     concrete_ep = ep()

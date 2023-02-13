@@ -50,12 +50,13 @@ class TgPoller(Poller):
 
         user = await self.user_finder(
             dict(
-                outer_id=tg_message.from_user.id,
+                outer_id=str(tg_message.from_user.id),
                 nickname=tg_message.from_user.username,
                 name=tg_message.from_user.first_name,
                 surname=tg_message.from_user.last_name,
             )
         )
+        print(type(user.outer_id))
         message = InEvent(user=user, text=text, project_name=self.project_name)
         await self.message_handler(message)
 
@@ -74,7 +75,7 @@ class TgPoller(Poller):
 
         user = await self.user_finder(
             dict(
-                outer_id=query.from_user.id,
+                outer_id=str(query.from_user.id),
                 nickname=query.from_user.username,
                 name=query.from_user.first_name,
                 surname=query.from_user.last_name,

@@ -156,11 +156,11 @@ async def test_context_saving(mock_scenario: Scenario) -> None:
         next_ids=["id_3"],
         node_type=NodeType.setVariable,
     )
-    out_node = OutMessage(
-        element_id="id_3", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
+    new_in_node = InMessage(
+        element_id="id_3", value="", next_ids=[], node_type=NodeType.inMessage
     )
     test_scenario = Scenario(
-        "test", "id_1", {"id_1": in_node, "id_2": set_variable, "id_3": out_node}
+        "test", "id_1", {"id_1": in_node, "id_2": set_variable, "id_3": new_in_node}
     )
 
     repo = InMemoryRepo()
@@ -262,13 +262,16 @@ async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> N
     out_node = OutMessage(
         element_id="id_2",
         value="TEXT1 {{ test_key }}",
-        next_ids=[],
+        next_ids=["id_3"],
         node_type=NodeType.outMessage,
+    )
+    new_in_node = InMessage(
+        element_id="id_3", value="", next_ids=[], node_type=NodeType.inMessage
     )
     test_scenario = Scenario(
         "test",
         "id_1",
-        {"id_1": in_node, "id_2": out_node},
+        {"id_1": in_node, "id_2": out_node, "id_3": new_in_node},
     )
 
     repo = InMemoryRepo()
@@ -542,13 +545,16 @@ async def test_out_text_substitution(mock_scenario: Scenario) -> None:
     out_node = OutMessage(
         element_id="id_2",
         value="TEXT1",
-        next_ids=[],
+        next_ids=["id_3"],
         node_type=NodeType.outMessage,
+    )
+    new_in_node = InMessage(
+        element_id="id_3", value="", next_ids=[], node_type=NodeType.inMessage
     )
     test_scenario = Scenario(
         "test",
         "id_1",
-        {"id_1": in_node, "id_2": out_node},
+        {"id_1": in_node, "id_2": out_node, "id_3": new_in_node},
     )
 
     scenario_texts = {"TEXT1": "text with templating {{test_key}}"}
@@ -600,10 +606,15 @@ async def test_different_projects(mock_scenario: Scenario) -> None:
         element_id="id_2", value="TEXT1", next_ids=[], node_type=NodeType.outMessage
     )
     out_node_another_project = OutMessage(
-        element_id="id_2", value="TEXT1_another", next_ids=[], node_type=NodeType.outMessage
+        element_id="id_2",
+        value="TEXT1_another",
+        next_ids=[],
+        node_type=NodeType.outMessage,
     )
     test_scenario = Scenario("test", "id_1", {"id_1": in_node, "id_2": out_node})
-    test_scenario_another_project = Scenario("test", "id_1", {"id_1": in_node, "id_2": out_node_another_project})
+    test_scenario_another_project = Scenario(
+        "test", "id_1", {"id_1": in_node, "id_2": out_node_another_project}
+    )
 
     repo = InMemoryRepo()
     await repo.create_project("test_project")
@@ -611,7 +622,9 @@ async def test_different_projects(mock_scenario: Scenario) -> None:
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
     await repo.add_scenario(scenario=test_scenario, project_name="test_project")
     await repo.add_scenario(scenario=mock_scenario, project_name="another_project")
-    await repo.add_scenario(scenario=test_scenario_another_project, project_name="another_project")
+    await repo.add_scenario(
+        scenario=test_scenario_another_project, project_name="another_project"
+    )
 
     ep = EventProcessor()
     wrapped_ep = EPWrapper(event_processor=ep, repo=repo)

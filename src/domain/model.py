@@ -10,6 +10,7 @@ from enum import Enum
 
 import aiohttp
 import curlparser
+from jsonpath_ng import parse
 
 
 @dataclass(kw_only=True)
@@ -48,6 +49,8 @@ class InEvent(Event):  # noqa
 @dataclass
 class Button:
     text: str
+    text_to_chat: str
+    text_to_bot: str
     callback_data: tp.Optional[str]
 
 
@@ -74,6 +77,8 @@ class NodeType(Enum):
     remoteRequest = "remoteRequest"
     setVariable = "setVariable"
     getVariable = "getVariable"
+    passNode = "passNode"
+    loopCounter = "loopCounter"
     ...
 
 
@@ -85,7 +90,8 @@ class ExecuteNode(ABC):
     next_ids: tp.List[str] | None
     value: str
     node_type: NodeType
-    buttons: tp.List[tp.Tuple[str, str]] | None = None
+    buttons: tp.List[tp.Tuple[str, str, str, str]] | None = None
+    procedural_source: tp.Optional[bool] = False
 
     @abstractmethod
     async def execute(
@@ -101,7 +107,9 @@ class ExecuteNode(ABC):
 
     def to_dict(
         self,
-    ) -> tp.Dict[str, tp.Union[str, tp.List[str], tp.List[tp.Tuple[str, str]], None]]:
+    ) -> tp.Dict[
+        str, tp.Union[str, tp.List[str], tp.List[tp.Tuple[str, str, str, str]], None]
+    ]:
         return dict(
             element_id=self.element_id,
             next_ids=self.next_ids,
@@ -120,6 +128,16 @@ class ExecuteNode(ABC):
             node_type=NodeType(kwargs_dict["node_type"]),
             buttons=[tuple(x) for x in kwargs_dict["buttons"]] if kwargs_dict["buttons"] is not None else None,  # type: ignore
         )
+
+
+class PassNode(ExecuteNode):
+    async def execute(
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        if in_text:
+            return [], {}, in_text
+        else:
+            return [], {}, ""
 
 
 class InIntent(ExecuteNode):
@@ -166,10 +184,34 @@ class OutMessage(ExecuteNode):
             linked_node_id=self.element_id,
             scenario_name=user.current_scenario_name,
         )
+        buttons_to_add = []
+        procedural_buttons = []
         if self.buttons:
-            out_event.buttons = [
-                Button(text=x[0], callback_data=x[1]) for x in self.buttons
+            buttons_to_add = [
+                Button(
+                    text=str(x[0]),
+                    callback_data=str(x[1]),
+                    text_to_bot=str(x[2]),
+                    text_to_chat=str(x[3]),
+                )
+                for x in self.buttons
             ]
+        if self.procedural_source and in_text:
+            buttons_data = json.loads(in_text)
+            if len(buttons_data) == 3:
+                button_texts, to_bot_texts, to_chat_texts = buttons_data
+                for t, b, c in zip(button_texts, to_bot_texts, to_chat_texts):
+                    procedural_buttons.append(
+                        Button(
+                            text=str(t),
+                            callback_data="",
+                            text_to_bot=str(b),
+                            text_to_chat=str(c),
+                        )
+                    )
+        all_buttons: tp.List[Button] = procedural_buttons + buttons_to_add
+        if all_buttons:
+            out_event.buttons = all_buttons
         return [out_event], {}, ""
 
 
@@ -188,7 +230,10 @@ class EditMessage(ExecuteNode):
         )
         if self.buttons:
             out_event.buttons = [
-                Button(text=x[0], callback_data=x[1]) for x in self.buttons
+                Button(
+                    text=x[0], callback_data=x[1], text_to_bot=x[2], text_to_chat=x[3]
+                )
+                for x in self.buttons
             ]
         return [out_event], {}, ""
 
@@ -197,6 +242,12 @@ class DataExtract(ExecuteNode):
     async def execute(
         self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
     ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        """
+        jsonpath_expr = parse("[*].['custom Name']")
+        jsonpath_expr = parse('[*].balance.RUB')
+        [match.value for match in jsonpath_expr.find(data)]
+        => [1234, 346245]
+        """
         if in_text is None:
             raise Exception("No input in extracting node")
         extract_type = self.value.split("(")[0]
@@ -207,9 +258,30 @@ class DataExtract(ExecuteNode):
                 return [], {}, ""
             return [], {}, in_text[res.start() : res.end()]
         elif extract_type == "json":
-            input_json = json.loads(in_text)  # noqa
-            search_path = self.value[5:-1]
-            return [], {}, str(eval(f"input_json{search_path}"))
+            try:
+                jsonpath_expr = parse(self.value[5:-1])
+                extracted = [
+                    match.value for match in jsonpath_expr.find(json.loads(in_text))
+                ]
+                if len(extracted) > 0:
+                    return [], {}, str(extracted[0])
+            except Exception as e:
+                print(e)
+            return [], {}, ""
+        elif extract_type == "jsonList":
+            try:
+                values_to_extract = self.value[9:-1].split("#")
+                ret_val = []
+                for v in values_to_extract:
+                    jsonpath_expr = parse(v)
+                    extracted = [
+                        match.value for match in jsonpath_expr.find(json.loads(in_text))
+                    ]
+                    ret_val.append(extracted)
+                return [], {}, json.dumps(ret_val)
+            except Exception as e:
+                print(e)
+            return [], {}, ""
         else:
             raise NotImplementedError("Such data extract type not implemented")
 
@@ -227,6 +299,11 @@ class LogicalUnit(ExecuteNode):
                 return [], {}, self.next_ids[1]
             else:
                 return [], {}, self.next_ids[0]
+        elif self.value == "IF":
+            if in_text:
+                return [], {}, self.next_ids[0]
+            else:
+                return [], {}, self.next_ids[1]
         elif self.value == "OR":
             if in_text is None:
                 raise ValueError("Logical unit AND must have string in input")
@@ -278,7 +355,37 @@ class SetVariable(ExecuteNode):
             in_text = ""
         var_type = self.value.split("(")[0]
         if var_type == "user":
-            return [], {var_name: in_text}, ""
+            if (
+                ("+" not in self.value)
+                and ("-" not in self.value)
+                and ("=" not in self.value)
+            ):
+                # установка в переменную того, что пришло из пайплайна
+                return [], {var_name: in_text}, ""
+            elif (
+                ("+" not in self.value)
+                and ("-" not in self.value)
+                and ("=" in self.value)
+            ):
+                # установка конкретного значения
+                value = self.value.split("=")[1]
+                return [], {var_name: str(value)}, ""
+            elif ("+=" in self.value) and ("-" not in self.value):
+                # сумма со вторым числом либо строкой
+                value = self.value.split("+=")[1]
+                try:
+                    new_value = int(ctx[var_name]) + int(value)
+                except ValueError:
+                    new_value = str(ctx[var_name]) + str(value)
+                return [], {var_name: str(new_value)}, ""
+            elif ("-=" in self.value) and ("+" not in self.value):
+                # разница со вторым числом либо строкой
+                value = self.value.split("-=")[1]
+                try:
+                    new_value = int(ctx[var_name]) - int(value)
+                except ValueError:
+                    new_value = str(ctx[var_name])[: -len(str(value))]
+                return [], {var_name: str(new_value)}, ""
         else:
             raise NotImplementedError("Such variable type not implemented")
 
@@ -298,6 +405,27 @@ class GetVariable(ExecuteNode):
             raise NotImplementedError("Such variable type not implemented")
 
 
+class LoopCounter(ExecuteNode):
+    async def execute(
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        if self.next_ids is None:
+            raise Exception("Need two child for loop counter node")
+        current_count = int(ctx.get(f"__{self.element_id}_loopCount", 1))
+        if current_count > int(self.value):
+            return (
+                [],
+                {f"__{self.element_id}_loopCount": str(1)},
+                self.next_ids[1],
+            )
+        else:
+            return (
+                [],
+                {f"__{self.element_id}_loopCount": str(current_count + 1)},
+                self.next_ids[0],
+            )
+
+
 class_dict = {
     "inIntent": InIntent,
     "matchText": MatchText,
@@ -309,6 +437,8 @@ class_dict = {
     "setVariable": SetVariable,
     "getVariable": GetVariable,
     "logicalUnit": LogicalUnit,
+    "passNode": PassNode,
+    "loopCounter": LoopCounter,
 }
 
 

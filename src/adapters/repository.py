@@ -10,6 +10,10 @@ from src.domain.model import User
 class AbstractRepo(ABC):
     # TODO: split repo for every model
 
+    @abstractmethod
+    async def prepare_db(self) -> None:
+        """Migrations, etc"""
+
     # User
     @abstractmethod
     async def get_or_create_user(self, **kwargs: tp.Any) -> User:
@@ -25,6 +29,13 @@ class AbstractRepo(ABC):
         self, user: User, ctx_to_update: tp.Dict[str, str]
     ) -> None:
         """Update user context"""
+
+    @abstractmethod
+    async def clear_user_context(
+        self,
+        user: User,
+    ) -> None:
+        """Clear user context (only loop counters)"""
 
     @abstractmethod
     async def get_user_context(self, user: User) -> tp.Dict[str, str]:
@@ -101,6 +112,9 @@ class InMemoryRepo(AbstractRepo):
         }
         """
 
+    async def prepare_db(self) -> None:
+        pass
+
     async def get_or_create_user(self, **kwargs: tp.Any) -> User:
         """Get by outer_id or create user"""
         if "outer_id" not in kwargs:
@@ -131,6 +145,19 @@ class InMemoryRepo(AbstractRepo):
     ) -> None:
         """Update user fields"""
         self.users_ctx[user.outer_id].update(ctx_to_update)
+
+    async def clear_user_context(
+        self,
+        user: User,
+    ) -> None:
+        """Clear user context (only loop counters)"""
+        keys = list(self.users_ctx[user.outer_id].keys())
+        new_dict = {}
+        for k in keys:
+            if "_loopCount" in k:
+                continue
+            new_dict[k] = self.users_ctx[user.outer_id][k]
+        self.users_ctx[user.outer_id] = new_dict
 
     async def get_user_context(self, user: User) -> tp.Dict[str, str]:
         """Get user context"""
@@ -191,5 +218,10 @@ class InMemoryRepo(AbstractRepo):
         res = []
         for project, scenarios in self.projects.items():
             for scenario in scenarios:
-                res.append((project, scenario["name"], ))
+                res.append(
+                    (
+                        project,
+                        scenario["name"],
+                    )
+                )
         return res

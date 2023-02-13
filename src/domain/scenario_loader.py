@@ -44,6 +44,19 @@ class XMLParser(Parser):
                 return k
         raise
 
+    @staticmethod
+    def _parse_button(
+        text: str, next_node_ids: tp.List[str]
+    ) -> tp.Tuple[str, str, str, str]:
+        if ":" in text:
+            text_values = text.split(":")
+            if len(text_values) != 3:
+                return text, ",".join(next_node_ids), "", ""
+            text_on_button, text_to_chat, text_to_bot = text_values
+            return text_on_button, ",".join(next_node_ids), text_to_bot, text_to_chat
+        else:
+            return text, ",".join(next_node_ids), "", ""
+
     def parse(self, input_stuff: tp.Any) -> tp.Tuple[str, tp.List[ExecuteNode]]:
         tree = et.parse(input_stuff)
 
@@ -91,7 +104,7 @@ class XMLParser(Parser):
         # присоединение кнопок к целевым блокам
         for n in nodes:
             xml_value = n.get("value")
-            if xml_value == "btnArray":
+            if (xml_value == "btnArray") or (xml_value == "btnArrayProcedural"):
                 array_id = n.get("id")
                 if not array_id:
                     print("button array has no id")
@@ -111,10 +124,16 @@ class XMLParser(Parser):
                     if not next_node_ids:
                         print("button must have any child")
                         raise
-                    buttons.append((text, ",".join(next_node_ids)))
+                    button_val = self._parse_button(
+                        text=text, next_node_ids=next_node_ids
+                    )
+                    buttons.append(button_val)
                 source_id = self._get_key_by_value(array_id, arrows)
                 result[source_id].buttons = buttons
-                result[source_id].next_ids = []
+                if xml_value == "btnArrayProcedural":
+                    result[source_id].procedural_source = True
+                # TODO: test this statement below
+                result[source_id].next_ids = arrows.get(array_id, [])  # []
         root_id = result[list(result.keys())[0]].element_id
         return root_id, list(result.values())
 

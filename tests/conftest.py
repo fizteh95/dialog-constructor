@@ -1,10 +1,14 @@
 import json
+import os
 import typing as tp
 
 import pytest
 
+from src.adapters.alchemy.repository import SQLAlchemyRepo
+from src.adapters.repository import AbstractRepo
 from src.domain.events import EventProcessor
 from src.domain.model import Event
+from src.domain.model import ExecuteNode
 from src.domain.model import InIntent
 from src.domain.model import LogicalUnit
 from src.domain.model import MatchText
@@ -297,7 +301,7 @@ def prepared_ep(
 
 @pytest.fixture
 def generate_scenario(
-    elements: tp.List[tp.List[tp.Any]],
+    elements: tp.List[tp.List[tp.Any] | ExecuteNode],
 ) -> tp.Tuple[EventProcessor, FakeScenarioGetter]:
     """
     [
@@ -309,17 +313,22 @@ def generate_scenario(
     """
     nodes = []  # : tp.List[ExecuteNode]
     for el in elements:
-        need_class = class_dict[el[0]]
-        buttons = None
-        if el[4]:
-            buttons = el[4]
-        node = need_class(  # type: ignore
-            element_id=el[1],
-            node_type=NodeType(el[0]),
-            next_ids=el[3],
-            value=el[2],
-            buttons=buttons,
-        )
+        if isinstance(el, tp.List):
+            need_class = class_dict[el[0]]
+            buttons = None
+            if el[4]:
+                buttons = el[4]
+            node = need_class(  # type: ignore
+                element_id=el[1],
+                node_type=NodeType(el[0]),
+                next_ids=el[3],
+                value=el[2],
+                buttons=buttons,
+            )
+        elif isinstance(el, ExecuteNode):
+            node = el
+        else:
+            raise
         nodes.append(node)
     new_scenario = Scenario(
         "matchtext_test",
@@ -347,3 +356,69 @@ def generate_scenario(
         phrases=["start"],
     )
     return ep, fake_sg
+
+
+@pytest.fixture
+def generate_intent_scenario(
+    elements: tp.List[tp.List[tp.Any] | ExecuteNode],
+) -> tp.Tuple[EventProcessor, FakeScenarioGetter]:
+    """
+    [
+        ["inMessage", "id_1", "", ['id_2'], ""],
+        ["outMessage", "id_2", "TEXT1", [], ""],
+        ...
+    ]
+    тип, айдишник, значение, следующие ноды, кнопки
+    """
+    nodes = []  # : tp.List[ExecuteNode]
+    for el in elements:
+        if isinstance(el, tp.List):
+            need_class = class_dict[el[0]]
+            buttons = None
+            if el[4]:
+                buttons = el[4]
+            node = need_class(  # type: ignore
+                element_id=el[1],
+                node_type=NodeType(el[0]),
+                next_ids=el[3],
+                value=el[2],
+                buttons=buttons,
+            )
+        elif isinstance(el, ExecuteNode):
+            node = el
+        else:
+            raise
+        nodes.append(node)
+    new_scenario = Scenario(
+        "matchtext_test",
+        "id_1",
+        {x.element_id: x for x in nodes},
+    )
+    dict_for_fake_getter = {
+        "test_project": {
+            "default": mock_scenario,
+            "matchtext_test": new_scenario,
+        }
+    }
+    fake_sg = FakeScenarioGetter(dict_for_fake_getter)  # type: ignore
+    ep = EventProcessor()
+    ep.add_scenario(
+        scenario_name="default",
+        project_name="test_project",
+        intents=[],
+        phrases=[],
+    )
+    ep.add_scenario(
+        scenario_name="matchtext_test",
+        project_name="test_project",
+        intents=["test_intent"],
+        phrases=[],
+    )
+    return ep, fake_sg
+
+
+@pytest.fixture
+async def alchemy_repo() -> AbstractRepo:
+    repo = SQLAlchemyRepo()
+    await repo._recreate_db()  # noqa
+    return repo

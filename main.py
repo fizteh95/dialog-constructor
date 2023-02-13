@@ -1,5 +1,6 @@
 import asyncio
 
+from src.adapters.alchemy.repository import SQLAlchemyRepo
 from src.adapters.ep_wrapper import EPWrapper
 from src.adapters.poller_adapter import PollerAdapter
 from src.adapters.repository import InMemoryRepo
@@ -15,7 +16,7 @@ from src.service_layer.sender import TgSender
 
 async def main() -> None:
     init_app = await bootstrap(
-        repo=InMemoryRepo,
+        repo=SQLAlchemyRepo,  # InMemoryRepo,
         ep=EventProcessor,
         ep_wrapper=EPWrapper,
         bus=ConcreteMessageBus,
