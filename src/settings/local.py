@@ -6,6 +6,9 @@ DB_PORT = getenv("DB_PORT", 5432)
 DB_USER = getenv("DB_USER", "postgres")
 DB_PASSWORD = getenv("DB_PASSWORD", "postgres")
 
+WEB_HOST = getenv("WEB_HOST", "localhost")
+WEB_PORT = getenv("WEB_PORT", 8080)
+
 if getenv("TEST"):
     ENGINE_STRING = "sqlite+aiosqlite:///:memory:"
 else:

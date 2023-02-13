@@ -6,6 +6,7 @@ import typing as tp
 
 from aiogram import Bot
 
+from src import settings
 from src.adapters.ep_wrapper import AbstractEPWrapper
 from src.adapters.poller_adapter import AbstractPollerAdapter
 from src.adapters.repository import AbstractRepo
@@ -113,8 +114,8 @@ async def bootstrap(
         repo=concrete_repo, bus=concrete_bus, ep_wrapped=wrapped_ep
     )
     concrete_web = web(
-        host="localhost",
-        port=8080,
+        host=settings.WEB_HOST,
+        port=settings.WEB_PORT,
         message_handler=concrete_web_adapter.message_handler,
     )
 
