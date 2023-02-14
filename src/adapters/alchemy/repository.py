@@ -21,6 +21,7 @@ from src.adapters.alchemy.models import users
 from src.adapters.repository import AbstractRepo
 from src.domain.model import Scenario
 from src.domain.model import User
+from src.settings import logger
 
 
 class SQLAlchemyRepo(AbstractRepo):
@@ -328,7 +329,7 @@ class SQLAlchemyRepo(AbstractRepo):
                 )
             )
         except Exception as e:
-            print(e)
+            logger.warning(e)
         await session.execute(
             scenarios.insert(),
             [
@@ -424,7 +425,7 @@ class SQLAlchemyRepo(AbstractRepo):
                 [dict(name=name)],
             )
         except Exception as e:  # если есть
-            print(e)
+            logger.warning(e)
             pass
 
     @use_session

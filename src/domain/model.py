@@ -12,6 +12,8 @@ import aiohttp
 import curlparser
 from jsonpath_ng import parse
 
+from src.settings import logger
+
 
 @dataclass(kw_only=True)
 class Event(ABC):
@@ -266,7 +268,7 @@ class DataExtract(ExecuteNode):
                 if len(extracted) > 0:
                     return [], {}, str(extracted[0])
             except Exception as e:
-                print(e)
+                logger.error(e)
             return [], {}, ""
         elif extract_type == "jsonList":
             try:
@@ -280,7 +282,7 @@ class DataExtract(ExecuteNode):
                     ret_val.append(extracted)
                 return [], {}, json.dumps(ret_val)
             except Exception as e:
-                print(e)
+                logger.error(e)
             return [], {}, ""
         else:
             raise NotImplementedError("Such data extract type not implemented")

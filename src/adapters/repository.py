@@ -5,6 +5,7 @@ from collections import defaultdict
 
 from src.domain.model import Scenario
 from src.domain.model import User
+from src.settings import logger
 
 
 class AbstractRepo(ABC):
@@ -204,7 +205,7 @@ class InMemoryRepo(AbstractRepo):
                 if scenario_dict["name"] == scenario_name:
                     return scenario_dict["texts"][template_name]  # type: ignore
         except KeyError:
-            print(f"Error, template {template_name} not found")
+            logger.warning(f"Error, template {template_name} not found")
             return template_name
         raise Exception("Scenario was not found")
 

@@ -9,6 +9,7 @@ from collections import defaultdict
 from src.domain.model import ExecuteNode
 from src.domain.model import NodeType
 from src.domain.model import class_dict
+from src.settings import logger
 
 
 class Parser(ABC):
@@ -81,14 +82,14 @@ class XMLParser(Parser):
                     node_type = NodeType(self._get_node_type(xml_value))
                 except ValueError:
                     # todo: сделать грамотную обработку если это заметка
-                    print(f"unknown NodeType, {xml_value}")
+                    logger.warning(f"unknown NodeType, {xml_value}")
                     continue
                 node_value = self._get_template(xml_value)
                 if node_value is None:
                     node_value = ""
                 element_id = n.get("id")
                 if not element_id:
-                    print("node has no element id")
+                    logger.warning("node has no element id")
                     continue
 
                 next_nodes = arrows.get(element_id, [])
@@ -107,22 +108,22 @@ class XMLParser(Parser):
             if (xml_value == "btnArray") or (xml_value == "btnArrayProcedural"):
                 array_id = n.get("id")
                 if not array_id:
-                    print("button array has no id")
+                    logger.warning("button array has no id")
                     continue
                 xml_buttons = tree.findall(f".//mxCell[@parent='{array_id}']")
                 buttons = []
                 for b in xml_buttons:
                     text = b.get("value")
                     if not text:
-                        print("button has no text")
+                        logger.error("button has no text")
                         raise
                     button_id = b.get("id")
                     if not button_id:
-                        print("has no reference in button")
+                        logger.warning("has no reference in button")
                         continue
                     next_node_ids = arrows.get(button_id)
                     if not next_node_ids:
-                        print("button must have any child")
+                        logger.error("button must have any child")
                         raise
                     button_val = self._parse_button(
                         text=text, next_node_ids=next_node_ids
@@ -142,9 +143,9 @@ def main() -> None:
     xml_src_path = "../scenarios/demo/weather_demo/scenario.xml"
     parser = XMLParser()
     root_id, nodes = parser.parse(src_path=xml_src_path)
-    print(len(nodes))
+    logger.info(len(nodes))
     for n in nodes:
-        print(n)
+        logger.info(n)
 
 
 if __name__ == "__main__":
