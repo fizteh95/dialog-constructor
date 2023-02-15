@@ -12,6 +12,8 @@ import aiohttp
 import curlparser
 from jsonpath_ng import parse
 
+from src.settings import logger
+
 
 @dataclass(kw_only=True)
 class Event(ABC):
@@ -266,7 +268,7 @@ class DataExtract(ExecuteNode):
                 if len(extracted) > 0:
                     return [], {}, str(extracted[0])
             except Exception as e:
-                print(e)
+                logger.error(e)
             return [], {}, ""
         elif extract_type == "jsonList":
             try:
@@ -280,7 +282,7 @@ class DataExtract(ExecuteNode):
                     ret_val.append(extracted)
                 return [], {}, json.dumps(ret_val)
             except Exception as e:
-                print(e)
+                logger.error(e)
             return [], {}, ""
         else:
             raise NotImplementedError("Such data extract type not implemented")
@@ -374,7 +376,7 @@ class SetVariable(ExecuteNode):
                 # сумма со вторым числом либо строкой
                 value = self.value.split("+=")[1]
                 try:
-                    new_value = int(ctx[var_name]) + int(value)
+                    new_value: str | int = int(ctx[var_name]) + int(value)
                 except ValueError:
                     new_value = str(ctx[var_name]) + str(value)
                 return [], {var_name: str(new_value)}, ""
@@ -386,6 +388,8 @@ class SetVariable(ExecuteNode):
                 except ValueError:
                     new_value = str(ctx[var_name])[: -len(str(value))]
                 return [], {var_name: str(new_value)}, ""
+            else:
+                raise NotImplementedError("Such operation type not implemented")
         else:
             raise NotImplementedError("Such variable type not implemented")
 

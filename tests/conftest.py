@@ -16,6 +16,7 @@ from src.domain.model import NodeType
 from src.domain.model import OutMessage
 from src.domain.model import Scenario
 from src.domain.model import class_dict
+from src.settings import logger
 
 
 @pytest.fixture()
@@ -230,9 +231,7 @@ class FakeScenarioGetter:
         try:
             return self.projects[project_name][name]
         except KeyError as e:
-            print(project_name)
-            print(name)
-            print(self.projects)
+            logger.debug(f"{project_name=}, {name=}, {self.projects=}: {e}")
             raise
 
 

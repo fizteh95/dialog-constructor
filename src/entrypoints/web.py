@@ -4,6 +4,9 @@ import uvicorn
 from fastapi import APIRouter
 from fastapi import FastAPI
 
+from src import settings
+from src.settings import logger
+
 
 class Web:
     def __init__(
@@ -34,13 +37,17 @@ class Web:
     async def message_text(
         self, body: tp.Dict[str, str]
     ) -> tp.List[tp.Dict[str, tp.Any]]:
-        print(f"incoming request: {body}")
+        logger.info(f"incoming request: {body}")
         events = await self.message_handler(body)
         return events
 
     async def start(self) -> None:
         config = uvicorn.Config(
-            self.app, host=self.host, port=self.port, log_level="debug"
+            self.app,
+            host=self.host,
+            port=self.port,
+            log_level="debug",
+            log_config=settings.LOGGING,
         )
         server = uvicorn.Server(config)
         await server.serve()

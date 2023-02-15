@@ -6,6 +6,7 @@ from abc import abstractmethod
 import aiogram
 
 from src.domain.model import OutEvent
+from src.settings import logger
 
 
 class Sender(ABC):
@@ -59,7 +60,7 @@ class TgSender(Sender):
         history: tp.List[tp.Dict[str, str]],
     ) -> str:
         """Send to outer service"""
-        print("send message")
+        logger.info("send message")
         if event.node_to_edit:
             keyboard = await self.get_keyboard(event)
             message_id_to_edit = await self._search_linked_message(

@@ -6,6 +6,7 @@ import aiogram
 
 from src.domain.model import InEvent
 from src.domain.model import User
+from src.settings import logger
 
 
 class Poller(ABC):
@@ -42,7 +43,7 @@ class TgPoller(Poller):
 
     async def process_message(self, tg_message: aiogram.types.Message) -> None:
         """Process message from telegram"""
-        print(f"new text from entrypoints {tg_message.text}")
+        logger.info(f"new text from entrypoints {tg_message.text}")
         try:
             text = tg_message.text
         except Exception as e:
@@ -56,7 +57,7 @@ class TgPoller(Poller):
                 surname=tg_message.from_user.last_name,
             )
         )
-        print(type(user.outer_id))
+        logger.debug(type(user.outer_id))
         message = InEvent(user=user, text=text, project_name=self.project_name)
         await self.message_handler(message)
 
@@ -65,8 +66,8 @@ class TgPoller(Poller):
         query: aiogram.types.CallbackQuery,
     ) -> None:
         """Process pushed button"""
-        print("button pushed")
-        print(query.data)
+        logger.info("button pushed")
+        logger.info(query.data)
         await query.answer()
         try:
             pushed_button = str(query.data)
@@ -88,7 +89,7 @@ class TgPoller(Poller):
 
     async def poll(self) -> None:
         """Poll from outer service. Must be run in background task"""
-        print("Start polling")
+        logger.info("Start polling")
         try:
             try:
                 await self.dp.start_polling()

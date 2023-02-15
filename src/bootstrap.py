@@ -20,6 +20,7 @@ from src.entrypoints.poller import Poller
 from src.entrypoints.web import Web
 from src.service_layer.message_bus import MessageBus
 from src.service_layer.sender import Sender
+from src.settings import logger
 
 
 async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
@@ -31,7 +32,7 @@ async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
 
     projects = paths[0][1]
     projects = [x for x in projects if x != "__pycache__"]
-    print(projects)
+    logger.info(f"found projects: {projects}")
 
     for project in projects:
         await repo.create_project(project)
@@ -40,11 +41,11 @@ async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
             scenario_paths = item[1]
             scenario_paths = [x for x in scenario_paths if x != "__pycache__"]
             for scenario in scenario_paths:
-                print(scenario)
+                logger.info(f"current scenario: {scenario}")
                 tree = os.walk(f"./src/scenarios/{project}/{scenario}")
                 for stage in tree:
                     scenario_files = stage[2]
-                    print(scenario_files)
+                    logger.info(f"scenario files: {scenario_files}")
 
                     if "scenario.py" in scenario_files:
                         make_scenario_file = importlib.import_module(
@@ -73,9 +74,9 @@ async def upload_scenarios_to_repo(repo: AbstractRepo, parser: Parser) -> None:
                     )
 
                     break
-                print("######")
+                logger.info("######")
             break
-        print("*****")
+        logger.info("*****")
 
 
 async def download_scenarios_to_ep(

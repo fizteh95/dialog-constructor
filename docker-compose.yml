@@ -9,12 +9,12 @@ services:
       - postgres
       - isfront
     environment:
-      - TEST=true
-      - DB_HOST=postgres
+#      - TEST=true
+      - DB_HOST=0.0.0.0
       - DB_PASSWORD=postgres
       - DB_USER=postgres
       - DB_NAME=postgres
-      - DB_HOST=5432
+      - DB_PORT=5432
       - WEB_HOST=0.0.0.0
       - WEB_PORT=8080
 #    volumes:
