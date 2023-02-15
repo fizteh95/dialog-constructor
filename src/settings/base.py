@@ -30,6 +30,4 @@ LOGGING = {
     },
 }
 
-# log = logging.getLogger("app_logger")
-
 logger = logging.getLogger(__name__)
