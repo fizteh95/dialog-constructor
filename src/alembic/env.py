@@ -65,7 +65,7 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
-def run_migrations_online():
+def run_migrations_online() -> None:
     connectable = context.config.attributes.get("connection", None)
     if connectable is None:
         connectable = AsyncEngine(
@@ -83,7 +83,7 @@ def run_migrations_online():
         do_run_migrations(connectable)
 
 
-async def run_async_migrations(connectable):
+async def run_async_migrations(connectable) -> None:
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

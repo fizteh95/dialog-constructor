@@ -216,7 +216,7 @@ class InMemoryRepo(AbstractRepo):
 
     async def get_all_scenarios_metadata(self) -> tp.List[tp.Tuple[str, str]]:
         """Get all scenarios names and projects"""
-        res = []
+        res: tp.List[tp.Tuple[str, str]] = []
         for project, scenarios in self.projects.items():
             for scenario in scenarios:
                 res.append(

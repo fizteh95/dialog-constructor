@@ -95,7 +95,7 @@ class XMLParser(Parser):
                 next_nodes = arrows.get(element_id, [])
 
                 need_class = class_dict[node_type.value]
-                dialogue_node = need_class(
+                dialogue_node = need_class(  # type: ignore
                     element_id=element_id,
                     node_type=node_type,
                     next_ids=next_nodes,

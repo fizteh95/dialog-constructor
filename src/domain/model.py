@@ -376,7 +376,7 @@ class SetVariable(ExecuteNode):
                 # сумма со вторым числом либо строкой
                 value = self.value.split("+=")[1]
                 try:
-                    new_value = int(ctx[var_name]) + int(value)
+                    new_value: str | int = int(ctx[var_name]) + int(value)
                 except ValueError:
                     new_value = str(ctx[var_name]) + str(value)
                 return [], {var_name: str(new_value)}, ""
@@ -388,6 +388,8 @@ class SetVariable(ExecuteNode):
                 except ValueError:
                     new_value = str(ctx[var_name])[: -len(str(value))]
                 return [], {var_name: str(new_value)}, ""
+            else:
+                raise NotImplementedError("Such operation type not implemented")
         else:
             raise NotImplementedError("Such variable type not implemented")
 
