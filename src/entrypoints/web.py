@@ -4,6 +4,7 @@ import uvicorn
 from fastapi import APIRouter
 from fastapi import FastAPI
 
+from src import settings
 from src.settings import logger
 
 
@@ -46,7 +47,7 @@ class Web:
             host=self.host,
             port=self.port,
             log_level="debug",
-            log_config={"version": 1, "disable_existing_loggers": False},
+            log_config=settings.LOGGING,
         )
         server = uvicorn.Server(config)
         await server.serve()
