@@ -1,6 +1,5 @@
 import logging
 
-
 LOG_LEVEL = "DEBUG"
 COMMON_FORMAT_STRING = " [%(levelname)-4s] [%(asctime)s] >> %(message)s"
 USER_FORMAT_STRING = (

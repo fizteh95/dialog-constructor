@@ -140,11 +140,13 @@ class XMLParser(Parser):
 
 
 def main() -> None:
-    xml_src_path = "../scenarios/demo/weather_demo/scenario.xml"
+    xml_src_path = "../scenarios/demo/loop_counter/scenario.xml"
     parser = XMLParser()
-    root_id, nodes = parser.parse(src_path=xml_src_path)
+    root_id, nodes = parser.parse(input_stuff=xml_src_path)
     logger.info(len(nodes))
+    print(len(nodes))
     for n in nodes:
+        print(n)
         logger.info(n)
 
 

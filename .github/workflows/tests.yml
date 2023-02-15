@@ -1,0 +1,25 @@
+name: Run tests on any Push event
+# Запуск при любом push евенте в любой ветке
+on: [push]
+jobs:
+  run_tests:
+    runs-on: [ubuntu-latest]
+    steps:
+      # Чекаутим код
+      - uses: actions/checkout@master
+      # Устанавливаем python нужной версии
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.11'
+          architecture: 'x64'
+      - name: Install requirements
+        # Устанавливаем зависимости
+        run: pip install -r requirements.txt
+#      - name: Linting
+#        run: ./scripts/lint
+      - name: Run tests
+        run: ./scripts/test --cov-report=xml
+#      - uses: codecov/codecov-action@v2
+#        with:
+#          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+#          files: ./coverage.xml
