@@ -1232,7 +1232,7 @@ async def test_remote_request_node_templating() -> None:
         element_id="id_1",
         next_ids=[],
         node_type=NodeType.remoteRequest,
-        value="""(curl -XGET 'https://catfact.ninja/#some_key#')""",  # fact
+        value="""(curl -XGET 'https://catfact.ninja/{{some_key}}')""",  # fact
     )
     events, new_ctx, text_to_pipeline = await remote_request.execute(user, ctx, "")
     assert events == []

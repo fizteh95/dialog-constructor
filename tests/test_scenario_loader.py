@@ -149,7 +149,7 @@ def test_scenario_loader_weather() -> None:
     assert RemoteRequest(
         element_id="y2Gkiw3MHWRdAHyPFfPg-21",
         next_ids=["y2Gkiw3MHWRdAHyPFfPg-37"],
-        value="(curl -XGET 'https://api.open-meteo.com/v1/forecast?latitude=#latitude#&longitude=#longitude#&hourly=temperature_2m')",
+        value="(curl -XGET 'https://api.open-meteo.com/v1/forecast?latitude={{latitude}}&longitude={{longitude}}&hourly=temperature_2m')",
         node_type=NodeType.remoteRequest,
         buttons=None,
         procedural_source=False,

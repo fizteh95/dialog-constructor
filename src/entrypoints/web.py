@@ -35,7 +35,7 @@ class Web:
         return {"status": "ok"}
 
     async def message_text(
-        self, body: tp.Dict[str, str]
+        self, body: tp.Dict[str, tp.Any]
     ) -> tp.List[tp.Dict[str, tp.Any]]:
         logger.info(f"incoming request: {body}")
         events = await self.message_handler(body)

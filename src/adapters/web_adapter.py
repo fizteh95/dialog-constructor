@@ -1,3 +1,4 @@
+import json
 import typing as tp
 from abc import ABC
 from abc import abstractmethod
@@ -85,22 +86,58 @@ class WebAdapter(AbstractWebAdapter):
                 b.text_to_chat = jinja_template.render(ctx)
         return event
 
+    @staticmethod
+    def _get_headers(headers: tp.List[tp.List[str]]) -> tp.Dict[str, str]:
+        return {header: value for header, value in headers}
+
     async def message_handler(
         self, unparsed_event: tp.Dict[str, tp.Any]
     ) -> tp.List[tp.Dict[str, tp.Any]]:
         """Process income message from poller"""
+        """
+        "project_name": "WEB_UL",
+        "integration_url": "https://test-delo.ru",
+        #####
+        "user_id": "13517462",
+        "text": "Мой тариф",
+        "type": "text",
+        "timestamp": "2019-09-02T17:12:40.916+05:00",
+        "context": {
+            "first_name": "Дианна",
+            "middle_name": "Маулевейна"
+        },
+        "security": 
+        {
+            "headers": 
+                        [
+                            ["Cookie", "JSESSIONID=8558c932-6777-46b5-9504-97a711cc9203"], 
+                            [   
+                                "User-Agent", 
+                                "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36"
+                            ]
+                        ]
+        }
+        """
         user_outer_id = unparsed_event["user_id"]
         text = unparsed_event["text"]
-        intent = unparsed_event["intent"]
-        project_id = unparsed_event["project_id"]
-        # TODO: здесь должен происходить матчинг айдишника и имени проекта
+        intent = unparsed_event.get("intent")
+        project_name = unparsed_event["project_name"]
+        headers = self._get_headers(unparsed_event["security"]["headers"])
+        integration_url = unparsed_event["integration_url"]
         user = await self.repo.get_or_create_user(outer_id=user_outer_id)
+        await self.repo.update_user_context(
+            user,
+            {
+                "__headers__": json.dumps(headers),
+                "__integration_url__": integration_url,
+            },
+        )
         message = InEvent(
             user=user,
             text=text,
             intent=intent,
             to_process=False,
-            project_name=project_id,
+            project_name=project_name,
         )
         await self.bus.public_message(message=message)
         events: tp.List[OutEvent] = await self.ep.process_event(message)  # type: ignore

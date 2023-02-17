@@ -78,14 +78,24 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     data_message = {
         "user_id": "test123",
         "text": "Hi!",
-        "project_id": "test_project",
+        "project_name": "test_project",
         "intent": "",
+        "integration_url": "https://test-url.ru",
+        "security": {
+            "headers": [
+                ["Cookie", "JSESSIONID=8558c932-6777-46b5-9504-97a711cc9203"],
+                [
+                    "User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36",
+                ],
+            ]
+        },
     }
     response = web_client.post("/message_text", json=data_message)
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["text"] == out_node.value
-    assert response.json()[0]["project_name"] == data_message["project_id"]
+    assert response.json()[0]["project_name"] == data_message["project_name"]
 
     assert len(listener.events) == 2
     assert isinstance(listener.events[0], InEvent)

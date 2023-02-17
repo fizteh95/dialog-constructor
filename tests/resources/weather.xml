@@ -38,7 +38,7 @@
         <mxCell id="y2Gkiw3MHWRdAHyPFfPg-38" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="y2Gkiw3MHWRdAHyPFfPg-21" target="y2Gkiw3MHWRdAHyPFfPg-37" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="y2Gkiw3MHWRdAHyPFfPg-21" value="remoteRequest:(curl -XGET &#39;https://api.open-meteo.com/v1/forecast?latitude=#latitude#&amp;amp;longitude=#longitude&lt;br&gt;#&amp;amp;hourly=temperature_2m&#39;)" style="rounded=0;whiteSpace=wrap;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+        <mxCell id="y2Gkiw3MHWRdAHyPFfPg-21" value="remoteRequest:(curl -XGET &#39;https://api.open-meteo.com/v1/forecast?latitude={{latitude}}&amp;amp;longitude={{longitude&lt;br&gt;}}&amp;amp;hourly=temperature_2m&#39;)" style="rounded=0;whiteSpace=wrap;html=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="100" y="1750" width="310" height="80" as="geometry" />
         </mxCell>
         <mxCell id="y2Gkiw3MHWRdAHyPFfPg-22" value="теперь долгота" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
