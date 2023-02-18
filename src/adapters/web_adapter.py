@@ -23,7 +23,7 @@ class AbstractWebAdapter(ABC):
     @abstractmethod
     async def message_handler(
         self, unparsed_event: tp.Dict[str, tp.Any]
-    ) -> tp.List[tp.Dict[str, tp.Any]]:
+    ) -> tp.Dict[str, tp.Any]:
         """Process income message from poller"""
 
 
@@ -92,7 +92,7 @@ class WebAdapter(AbstractWebAdapter):
 
     async def message_handler(
         self, unparsed_event: tp.Dict[str, tp.Any]
-    ) -> tp.List[tp.Dict[str, tp.Any]]:
+    ) -> tp.Dict[str, tp.Any]:
         """Process income message from poller"""
         """
         "project_name": "WEB_UL",
@@ -147,6 +147,30 @@ class WebAdapter(AbstractWebAdapter):
             e.to_process = False
             await self.bus.public_message(message=e)
             new_events.append(templated_event)
-        # TODO: здесь приводим к нужному формату ответа
-        transformed_events = [x.__dict__ for x in new_events]
+        results = []
+        for i in new_events:
+            results.append(
+                {
+                    "type": "text",
+                    "project_name": project_name,
+                    "intent_name": [i.scenario_name],
+                    "text": i.text,
+                }
+            )
+            if i.buttons:
+                for b in i.buttons:
+                    results.append(
+                        {
+                            "project_name": project_name,
+                            "intent_name": i.scenario_name,
+                            "function": "button",
+                            "params": {
+                                "text_button": b.text,
+                                "text_to_chat": b.text_to_chat,
+                                "text_to_bot": b.text_to_bot,
+                            },
+                            "type": "function",
+                        }
+                    )
+        transformed_events = {"user_id": user.outer_id, "events": results}
         return transformed_events
