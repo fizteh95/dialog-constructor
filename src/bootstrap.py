@@ -9,6 +9,7 @@ from aiogram import Bot
 from src import settings
 from src.adapters.ep_wrapper import AbstractEPWrapper
 from src.adapters.poller_adapter import AbstractPollerAdapter
+from src.adapters.repository import AbstractContextRepo
 from src.adapters.repository import AbstractRepo
 from src.adapters.sender_wrapper import AbstractSenderWrapper
 from src.adapters.web_adapter import AbstractWebAdapter
@@ -89,6 +90,7 @@ async def download_scenarios_to_ep(
 
 async def bootstrap(
     repo: tp.Type[AbstractRepo],
+    ctx_repo: tp.Type[AbstractContextRepo],
     ep: tp.Type[EventProcessor],
     ep_wrapper: tp.Type[AbstractEPWrapper],
     bus: tp.Type[MessageBus],
@@ -104,15 +106,23 @@ async def bootstrap(
     await concrete_repo.prepare_db()
     parser = XMLParser()
     await upload_scenarios_to_repo(repo=concrete_repo, parser=parser)
+
+    concrete_ctx_repo = ctx_repo()
+
     concrete_ep = ep()
-    wrapped_ep = ep_wrapper(event_processor=concrete_ep, repo=concrete_repo)
+    wrapped_ep = ep_wrapper(
+        event_processor=concrete_ep, repo=concrete_repo, ctx_repo=concrete_ctx_repo
+    )
     await download_scenarios_to_ep(wrapped_ep=wrapped_ep, repo=concrete_repo)
 
     concrete_bus = bus()
     concrete_bus.register(wrapped_ep)
 
     concrete_web_adapter = web_adapter(
-        repo=concrete_repo, bus=concrete_bus, ep_wrapped=wrapped_ep
+        repo=concrete_repo,
+        ctx_repo=concrete_ctx_repo,
+        bus=concrete_bus,
+        ep_wrapped=wrapped_ep,
     )
     concrete_web = web(
         host=settings.WEB_HOST,
@@ -125,7 +135,9 @@ async def bootstrap(
 
     if sender is not None and sender_wrapper is not None:
         concrete_sender = sender(bot=bot, project_name="demo")
-        wrapped_sender = sender_wrapper(sender=concrete_sender, repo=concrete_repo)
+        wrapped_sender = sender_wrapper(
+            sender=concrete_sender, repo=concrete_repo, ctx_repo=concrete_ctx_repo
+        )
         concrete_bus.register(wrapped_sender)
 
     if poller is not None and poller_adapter is not None:

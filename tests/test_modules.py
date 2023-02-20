@@ -4,6 +4,7 @@ import pytest
 
 from src.adapters.ep_wrapper import EPWrapper
 from src.adapters.poller_adapter import PollerAdapter
+from src.adapters.repository import InMemoryContextRepo
 from src.adapters.repository import InMemoryRepo
 from src.adapters.sender_wrapper import SenderWrapper
 from src.domain.events import EventProcessor
@@ -71,8 +72,10 @@ async def test_scenario_getter(
     await repo.add_scenario(scenario=intent_scenario, project_name="test_project")
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=matchtext_scenario.name, project_name="test_project"
     )
@@ -113,8 +116,10 @@ async def test_message_bus(mock_scenario: Scenario) -> None:
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
     await repo.add_scenario(scenario=test_scenario, project_name="test_project")
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )
@@ -168,8 +173,10 @@ async def test_context_saving(mock_scenario: Scenario) -> None:
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
     await repo.add_scenario(scenario=test_scenario, project_name="test_project")
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )
@@ -188,7 +195,7 @@ async def test_context_saving(mock_scenario: Scenario) -> None:
 
     await bus.public_message(in_event)
 
-    user_ctx = await repo.get_user_context(user)
+    user_ctx = await ctx_repo.get_user_context(user)
     assert len(user_ctx) == 1
     assert "test_var1" in user_ctx
     assert user_ctx["test_var1"] == "Hi!"
@@ -225,8 +232,10 @@ async def test_out_messages_saving(mock_scenario: Scenario) -> None:
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
     await repo.add_scenario(scenario=test_scenario, project_name="test_project")
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )
@@ -235,7 +244,7 @@ async def test_out_messages_saving(mock_scenario: Scenario) -> None:
     )
 
     sender = FakeSender()
-    wrapped_sender = SenderWrapper(sender=sender, repo=repo)
+    wrapped_sender = SenderWrapper(sender=sender, repo=repo, ctx_repo=ctx_repo)
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
@@ -279,8 +288,10 @@ async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> N
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
     await repo.add_scenario(scenario=test_scenario, project_name="test_project")
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )
@@ -289,10 +300,10 @@ async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> N
     )
 
     user = User(outer_id="1")
-    await repo.update_user_context(user, {"test_key": "test_value"})
+    await ctx_repo.update_user_context(user, {"test_key": "test_value"})
 
     sender = FakeSender()
-    wrapped_sender = SenderWrapper(sender=sender, repo=repo)
+    wrapped_sender = SenderWrapper(sender=sender, repo=repo, ctx_repo=ctx_repo)
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
@@ -302,7 +313,7 @@ async def test_context_available_in_wrapped_sender(mock_scenario: Scenario) -> N
 
     await bus.public_message(in_event)
 
-    user_ctx = await repo.get_user_context(user)
+    user_ctx = await ctx_repo.get_user_context(user)
     assert len(user_ctx) == 1
     assert user_ctx["test_key"] == "test_value"
     assert len(sender.out_messages) == 1
@@ -339,16 +350,16 @@ async def test_in_memory_repo_user() -> None:
 
 @pytest.mark.asyncio
 async def test_in_memory_repo_context() -> None:
-    repo = InMemoryRepo()
+    ctx_repo = InMemoryContextRepo()
 
     user = User(outer_id="1")
-    user_ctx = await repo.get_user_context(user)
+    user_ctx = await ctx_repo.get_user_context(user)
     assert isinstance(user_ctx, tp.Dict)
     assert user_ctx == {}
 
     ctx_to_update = {"test_key": "test_value", "key_to_update": "value_to_update"}
-    await repo.update_user_context(user, ctx_to_update)
-    user_ctx = await repo.get_user_context(user)
+    await ctx_repo.update_user_context(user, ctx_to_update)
+    user_ctx = await ctx_repo.get_user_context(user)
     assert len(user_ctx) == 2
     assert "test_key" in user_ctx and "key_to_update" in user_ctx
     assert (
@@ -357,8 +368,8 @@ async def test_in_memory_repo_context() -> None:
     )
 
     new_ctx = {"key_to_update": "updated_value"}
-    await repo.update_user_context(user, new_ctx)
-    user_ctx = await repo.get_user_context(user)
+    await ctx_repo.update_user_context(user, new_ctx)
+    user_ctx = await ctx_repo.get_user_context(user)
     assert len(user_ctx) == 2
     assert "test_key" in user_ctx and "key_to_update" in user_ctx
     assert (
@@ -428,8 +439,10 @@ async def test_poller_adapter(mock_scenario: Scenario) -> None:
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
     await repo.add_scenario(scenario=test_scenario, project_name="test_project")
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )
@@ -569,11 +582,13 @@ async def test_out_text_substitution(mock_scenario: Scenario) -> None:
         texts=scenario_texts,
     )
 
+    ctx_repo = InMemoryContextRepo()
+
     user = User(outer_id="1")
-    await repo.update_user_context(user, {"test_key": "test_value"})
+    await ctx_repo.update_user_context(user, {"test_key": "test_value"})
 
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )
@@ -582,7 +597,7 @@ async def test_out_text_substitution(mock_scenario: Scenario) -> None:
     )
 
     sender = FakeSender()
-    wrapped_sender = SenderWrapper(sender=sender, repo=repo)
+    wrapped_sender = SenderWrapper(sender=sender, repo=repo, ctx_repo=ctx_repo)
 
     bus = ConcreteMessageBus()
     bus.register(wrapped_ep)
@@ -626,8 +641,10 @@ async def test_different_projects(mock_scenario: Scenario) -> None:
         scenario=test_scenario_another_project, project_name="another_project"
     )
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )

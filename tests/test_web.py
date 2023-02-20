@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.adapters.ep_wrapper import EPWrapper
+from src.adapters.repository import InMemoryContextRepo
 from src.adapters.repository import InMemoryRepo
 from src.adapters.web_adapter import WebAdapter
 from src.domain.events import EventProcessor
@@ -43,8 +44,10 @@ async def test_message_text(mock_scenario: Scenario) -> None:
         texts={"TEXT_mock_scenario": "Подключаем оператора"},
     )
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=mock_scenario.name, project_name="test_project"
     )
@@ -55,7 +58,9 @@ async def test_message_text(mock_scenario: Scenario) -> None:
     bus.register(wrapped_ep)
     bus.register(listener)
 
-    web_adapter = WebAdapter(repo=repo, bus=bus, ep_wrapped=wrapped_ep)
+    web_adapter = WebAdapter(
+        repo=repo, bus=bus, ep_wrapped=wrapped_ep, ctx_repo=ctx_repo
+    )
     _web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
     web_client = TestClient(_web.app)
 
@@ -104,8 +109,10 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     await repo.add_scenario(scenario=mock_scenario, project_name="test_project")
     await repo.add_scenario(scenario=test_scenario, project_name="test_project")
 
+    ctx_repo = InMemoryContextRepo()
+
     ep = EventProcessor()
-    wrapped_ep = EPWrapper(event_processor=ep, repo=repo)
+    wrapped_ep = EPWrapper(event_processor=ep, repo=repo, ctx_repo=ctx_repo)
     await wrapped_ep.add_scenario(
         scenario_name=test_scenario.name, project_name="test_project"
     )
@@ -119,7 +126,9 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     bus.register(wrapped_ep)
     bus.register(listener)
 
-    web_adapter = WebAdapter(repo=repo, bus=bus, ep_wrapped=wrapped_ep)
+    web_adapter = WebAdapter(
+        repo=repo, bus=bus, ep_wrapped=wrapped_ep, ctx_repo=ctx_repo
+    )
     _web = Web(host="localhost", port=8080, message_handler=web_adapter.message_handler)
     web_client = TestClient(_web.app)
 

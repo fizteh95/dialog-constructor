@@ -6,6 +6,7 @@ from abc import abstractmethod
 import jinja2 as j2
 
 from src.adapters.ep_wrapper import AbstractEPWrapper
+from src.adapters.repository import AbstractContextRepo
 from src.adapters.repository import AbstractRepo
 from src.domain.model import InEvent
 from src.domain.model import OutEvent
@@ -14,9 +15,14 @@ from src.service_layer.message_bus import MessageBus
 
 class AbstractWebAdapter(ABC):
     def __init__(
-        self, repo: AbstractRepo, bus: MessageBus, ep_wrapped: AbstractEPWrapper
+        self,
+        repo: AbstractRepo,
+        ctx_repo: AbstractContextRepo,
+        bus: MessageBus,
+        ep_wrapped: AbstractEPWrapper,
     ) -> None:
         self.repo = repo
+        self.ctx_repo = ctx_repo
         self.bus = bus
         self.ep = ep_wrapped
 
@@ -29,9 +35,13 @@ class AbstractWebAdapter(ABC):
 
 class WebAdapter(AbstractWebAdapter):
     def __init__(
-        self, repo: AbstractRepo, bus: MessageBus, ep_wrapped: AbstractEPWrapper
+        self,
+        repo: AbstractRepo,
+        ctx_repo: AbstractContextRepo,
+        bus: MessageBus,
+        ep_wrapped: AbstractEPWrapper,
     ) -> None:
-        super().__init__(repo=repo, bus=bus, ep_wrapped=ep_wrapped)
+        super().__init__(repo=repo, ctx_repo=ctx_repo, bus=bus, ep_wrapped=ep_wrapped)
 
     async def process_templating(self, event: OutEvent) -> OutEvent:
         template_name = event.text
@@ -44,7 +54,7 @@ class WebAdapter(AbstractWebAdapter):
             )
         else:
             template = event.text
-        ctx = await self.repo.get_user_context(event.user)
+        ctx = await self.ctx_repo.get_user_context(event.user)
         jinja_template = j2.Template(template)
         event.text = jinja_template.render(ctx)
         if event.buttons is not None:
@@ -125,7 +135,7 @@ class WebAdapter(AbstractWebAdapter):
         headers = self._get_headers(unparsed_event["security"]["headers"])
         integration_url = unparsed_event["integration_url"]
         user = await self.repo.get_or_create_user(outer_id=user_outer_id)
-        await self.repo.update_user_context(
+        await self.ctx_repo.update_user_context(
             user,
             {
                 "__headers__": json.dumps(headers),
