@@ -15,3 +15,7 @@ else:
     ENGINE_STRING = (
         f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
+
+REDIS_HOST = getenv("REDIS_HOST", "localhost")
+REDIS_PORT = getenv("REDIS_PORT", "6379")
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}"

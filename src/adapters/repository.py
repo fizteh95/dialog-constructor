@@ -24,24 +24,6 @@ class AbstractRepo(ABC):
     async def update_user(self, user: User) -> User:
         """Update user fields"""
 
-    # Context
-    @abstractmethod
-    async def update_user_context(
-        self, user: User, ctx_to_update: tp.Dict[str, str]
-    ) -> None:
-        """Update user context"""
-
-    @abstractmethod
-    async def clear_user_context(
-        self,
-        user: User,
-    ) -> None:
-        """Clear user context (only loop counters)"""
-
-    @abstractmethod
-    async def get_user_context(self, user: User) -> tp.Dict[str, str]:
-        """Get user context"""
-
     @abstractmethod
     async def get_user_history(self, user: User) -> tp.List[tp.Dict[str, str]]:
         """Get user history of out messages"""
@@ -81,10 +63,29 @@ class AbstractRepo(ABC):
         """Get all scenarios names and projects"""
 
 
+class AbstractContextRepo(ABC):
+    # Context
+    @abstractmethod
+    async def update_user_context(
+        self, user: User, ctx_to_update: tp.Dict[str, str]
+    ) -> None:
+        """Update user context"""
+
+    @abstractmethod
+    async def clear_user_context(
+        self,
+        user: User,
+    ) -> None:
+        """Clear user context (only loop counters)"""
+
+    @abstractmethod
+    async def get_user_context(self, user: User) -> tp.Dict[str, str]:
+        """Get user context"""
+
+
 class InMemoryRepo(AbstractRepo):
     def __init__(self) -> None:
         self.users: tp.Dict[str, User] = {}
-        self.users_ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
         self.out_messages: tp.Dict[str, tp.List[tp.Dict[str, str]]] = defaultdict(list)
         self.projects: tp.Dict[
             str,
@@ -141,29 +142,6 @@ class InMemoryRepo(AbstractRepo):
         self.users[user.outer_id] = user
         return self.users[user.outer_id]
 
-    async def update_user_context(
-        self, user: User, ctx_to_update: tp.Dict[str, str]
-    ) -> None:
-        """Update user fields"""
-        self.users_ctx[user.outer_id].update(ctx_to_update)
-
-    async def clear_user_context(
-        self,
-        user: User,
-    ) -> None:
-        """Clear user context (only loop counters)"""
-        keys = list(self.users_ctx[user.outer_id].keys())
-        new_dict = {}
-        for k in keys:
-            if "_loopCount" in k:
-                continue
-            new_dict[k] = self.users_ctx[user.outer_id][k]
-        self.users_ctx[user.outer_id] = new_dict
-
-    async def get_user_context(self, user: User) -> tp.Dict[str, str]:
-        """Get user context"""
-        return self.users_ctx[user.outer_id]
-
     async def get_user_history(self, user: User) -> tp.List[tp.Dict[str, str]]:
         """Get user history of out messages"""
         return self.out_messages[user.outer_id]
@@ -219,10 +197,39 @@ class InMemoryRepo(AbstractRepo):
         res: tp.List[tp.Tuple[str, str]] = []
         for project, scenarios in self.projects.items():
             for scenario in scenarios:
+                scenario_name: str = scenario["name"]  # type: ignore
                 res.append(
                     (
                         project,
-                        scenario["name"],
+                        scenario_name,
                     )
                 )
         return res
+
+
+class InMemoryContextRepo(AbstractContextRepo):
+    def __init__(self) -> None:
+        self.users_ctx: tp.Dict[str, tp.Dict[str, str]] = defaultdict(dict)
+
+    async def update_user_context(
+        self, user: User, ctx_to_update: tp.Dict[str, str]
+    ) -> None:
+        """Update user fields"""
+        self.users_ctx[user.outer_id].update(ctx_to_update)
+
+    async def clear_user_context(
+        self,
+        user: User,
+    ) -> None:
+        """Clear user context (only loop counters)"""
+        keys = list(self.users_ctx[user.outer_id].keys())
+        new_dict = {}
+        for k in keys:
+            if "_loopCount" in k:
+                continue
+            new_dict[k] = self.users_ctx[user.outer_id][k]
+        self.users_ctx[user.outer_id] = new_dict
+
+    async def get_user_context(self, user: User) -> tp.Dict[str, str]:
+        """Get user context"""
+        return self.users_ctx[user.outer_id]

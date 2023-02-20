@@ -14,7 +14,7 @@ class Web:
         host: str,
         port: int,
         message_handler: tp.Callable[
-            [tp.Dict[str, tp.Any]], tp.Awaitable[tp.List[tp.Dict[str, tp.Any]]]
+            [tp.Dict[str, tp.Any]], tp.Awaitable[tp.Dict[str, tp.Any]]
         ],
     ) -> None:
         self.host = host
@@ -34,11 +34,10 @@ class Web:
     async def healthcheck() -> tp.Dict[str, str]:
         return {"status": "ok"}
 
-    async def message_text(
-        self, body: tp.Dict[str, str]
-    ) -> tp.List[tp.Dict[str, tp.Any]]:
+    async def message_text(self, body: tp.Dict[str, tp.Any]) -> tp.Dict[str, tp.Any]:
         logger.info(f"incoming request: {body}")
         events = await self.message_handler(body)
+        print(events)
         return events
 
     async def start(self) -> None:

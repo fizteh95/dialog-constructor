@@ -10,6 +10,7 @@ from enum import Enum
 
 import aiohttp
 import curlparser
+import jinja2 as j2
 from jsonpath_ng import parse
 
 from src.settings import logger
@@ -333,15 +334,21 @@ class RemoteRequest(ExecuteNode):
         curl_str = self.value[1:-1]
         parsed_curl = curlparser.parse(curl_str)
         request_url = parsed_curl.url
-        for k, v in ctx.items():
-            request_url = request_url.replace(f"#{k}#", str(v))
+        jinja_template = j2.Template(request_url)
+        request_url = jinja_template.render(ctx)
+        if "__headers__" in ctx:
+            headers = ctx["__headers__"]
+        else:
+            headers = None
         if parsed_curl.method == "GET":
             async with aiohttp.ClientSession() as session:
-                async with session.get(request_url) as resp:
+                async with session.get(request_url, headers=headers) as resp:
                     res = await resp.text()
         elif parsed_curl.method == "POST":
             async with aiohttp.ClientSession() as session:
-                async with session.post(request_url, json=parsed_curl.json) as resp:
+                async with session.post(
+                    request_url, headers=headers, json=parsed_curl.json
+                ) as resp:
                     res = await resp.text()
         else:
             raise NotImplementedError(f"{parsed_curl.method} method not implemented")

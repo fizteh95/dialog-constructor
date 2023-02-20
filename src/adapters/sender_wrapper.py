@@ -5,6 +5,7 @@ from abc import abstractmethod
 
 import jinja2 as j2
 
+from src.adapters.repository import AbstractContextRepo
 from src.adapters.repository import AbstractRepo
 from src.domain.model import Event
 from src.domain.model import OutEvent
@@ -14,9 +15,12 @@ from src.service_layer.sender import Sender
 class AbstractSenderWrapper(ABC):
     """Хранит в себе историю отправленных сообщений пользователю"""
 
-    def __init__(self, sender: Sender, repo: AbstractRepo) -> None:
+    def __init__(
+        self, sender: Sender, repo: AbstractRepo, ctx_repo: AbstractContextRepo
+    ) -> None:
         self.sender = sender
         self.repo = repo
+        self.ctx_repo = ctx_repo
 
     @abstractmethod
     async def process_templating(self, event: OutEvent) -> OutEvent:
@@ -36,8 +40,9 @@ class SenderWrapper(AbstractSenderWrapper):
         self,
         sender: Sender,
         repo: AbstractRepo,
+        ctx_repo: AbstractContextRepo,
     ) -> None:
-        super().__init__(sender=sender, repo=repo)
+        super().__init__(sender=sender, repo=repo, ctx_repo=ctx_repo)
 
     async def process_templating(self, event: OutEvent) -> OutEvent:
         template_name = event.text
@@ -50,7 +55,7 @@ class SenderWrapper(AbstractSenderWrapper):
             )
         else:
             template = event.text
-        ctx = await self.repo.get_user_context(event.user)
+        ctx = await self.ctx_repo.get_user_context(event.user)
         jinja_template = j2.Template(template)
         event.text = jinja_template.render(ctx)
         if event.buttons is not None:
