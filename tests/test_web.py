@@ -87,7 +87,7 @@ async def test_message_text(mock_scenario: Scenario) -> None:
             {
                 "type": "text",
                 "project_name": "test_project",
-                "intent_name": ["default"],
+                "intent_name": "default",
                 "text": "Подключаем оператора",
             }
         ],
@@ -153,7 +153,7 @@ async def test_web_adapter_integration(mock_scenario: Scenario) -> None:
     assert response.json() == {
         "events": [
             {
-                "intent_name": ["test"],
+                "intent_name": "test",
                 "project_name": "test_project",
                 "text": "TEXT1",
                 "type": "text",
