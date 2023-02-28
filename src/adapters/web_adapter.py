@@ -110,12 +110,7 @@ class WebAdapter(AbstractWebAdapter):
         #####
         "user_id": "13517462",
         "text": "Мой тариф",
-        "type": "text",
-        "timestamp": "2019-09-02T17:12:40.916+05:00",
-        "context": {
-            "first_name": "Дианна",
-            "middle_name": "Маулевейна"
-        },
+        "intent": "",
         "security": 
         {
             "headers": 
@@ -163,7 +158,7 @@ class WebAdapter(AbstractWebAdapter):
                 {
                     "type": "text",
                     "project_name": project_name,
-                    "intent_name": [i.scenario_name],
+                    "intent_name": i.scenario_name,
                     "text": i.text,
                 }
             )

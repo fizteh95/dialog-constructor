@@ -338,6 +338,7 @@ class RemoteRequest(ExecuteNode):
         request_url = jinja_template.render(ctx)
         if "__headers__" in ctx:
             headers = ctx["__headers__"]
+            headers = json.loads(headers)
         else:
             headers = None
         if parsed_curl.method == "GET":
