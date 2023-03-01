@@ -1691,3 +1691,40 @@ async def test_loop_counter(
     assert out_events[0].text == matchtext_scenario.get_node_by_id("id_4").value
     assert user.current_node_id is None
     assert user.current_scenario_name is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "elements",
+    [
+        [
+            ["matchText", "id_1", "start", ["id_2"], ""],
+            [
+                "evalNode",
+                "id_2",
+                "(def func(in_var, ctx): return str(3 + 2) + ' ' + in_var)",
+                ["id_3"],
+                "",
+            ],
+            ["setVariable", "id_3", "user(test_var1)", ["id_4"], ""],
+            ["outMessage", "id_4", "TEXT_scenario3", [], ""],
+        ]
+    ],
+)
+async def test_eval_node(
+    generate_scenario: tp.Tuple[EventProcessor, FakeScenarioGetter]
+) -> None:
+    ep, fake_sg = generate_scenario
+
+    user = User(outer_id="1")
+    start_in_event = InEvent(user=user, text="start", project_name="test_project")
+    ctx: tp.Dict[str, str] = {}
+    matchtext_scenario = fake_sg.projects["test_project"]["matchtext_test"]
+
+    out_events, new_ctx = await ep.process_event(start_in_event, ctx, fake_sg.find)
+    assert len(out_events) == 1
+    assert isinstance(out_events[0], OutEvent)
+    assert out_events[0].text == matchtext_scenario.get_node_by_id("id_4").value
+    assert new_ctx == {"test_var1": "5 start"}
+    assert user.current_node_id is None
+    assert user.current_scenario_name is None

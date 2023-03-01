@@ -177,6 +177,7 @@ class EventProcessor:
                 NodeType.getVariable,
                 NodeType.remoteRequest,
                 NodeType.dataExtract,
+                NodeType.evalNode,
             ):
                 out_events, update_ctx, pipeline_text = await current_node.execute(
                     user, ctx, pipeline_text

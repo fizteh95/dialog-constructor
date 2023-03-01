@@ -82,6 +82,7 @@ class NodeType(Enum):
     getVariable = "getVariable"
     passNode = "passNode"
     loopCounter = "loopCounter"
+    evalNode = "evalNode"
     ...
 
 
@@ -438,6 +439,19 @@ class LoopCounter(ExecuteNode):
             )
 
 
+class EvalNode(ExecuteNode):
+    async def execute(
+        self, user: User, ctx: tp.Dict[str, str], in_text: str | None = None
+    ) -> tp.Tuple[tp.List[OutEvent], tp.Dict[str, str], str]:
+        expression = self.value[1:-1]
+        loc = {}  # type: ignore
+        exec(expression, globals(), loc)
+        print(expression)
+        res = loc["func"](in_text, ctx)
+        print(res)
+        return [], {}, res
+
+
 class_dict = {
     "inIntent": InIntent,
     "matchText": MatchText,
@@ -451,6 +465,7 @@ class_dict = {
     "logicalUnit": LogicalUnit,
     "passNode": PassNode,
     "loopCounter": LoopCounter,
+    "evalNode": EvalNode,
 }
 
 
